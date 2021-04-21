@@ -38,7 +38,6 @@ int main(int argc, char *argv[]){
   }
   char *pipe_name = malloc(11*sizeof(char));
   int *read_file_descs = malloc(2*numMonitors*sizeof(int));
-  int file_desc_iter = 0;
   for(i = 1; i <= numMonitors; i++){
       // Making the pipes 
       // Then, each child that will be exec'd
@@ -49,38 +48,19 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "errno: %d\n", errno);
         perror("mkfifo");
       }
-      file_descriptors[file_desc_iter] = open(pipe_name, O_RDONLY | O_NONBLOCK);
-      if(file_descriptors[file_desc_iter] < 0){
+      read_file_descs[i] = open(pipe_name, O_RDONLY | O_NONBLOCK);
+      if(read_file_descs[i] < 0){
         perror("open");
       }
-      file_desc_iter++;
-      sprintf(pipe_name, "pipes/%dw", i);
-      if(mkfifo(pipe_name, 0666) < 0){
-        fprintf(stderr, "errno: %d\n", errno);
-        perror("mkfifo");
-      }
-      file_descriptors[file_desc_iter] = open(pipe_name, O_WRONLY);
-      if(file_descriptors[file_desc_iter] < 0){
-        perror("open");
-      }
-      file_desc_iter++;
   }
   file_desc_iter = 0;
   for(i = 1; i <= numMonitors; i++){
-    close(file_descriptors[file_desc_iter]);
-    file_desc_iter++;
+    close(read_file_descs[i]);
     sprintf(pipe_name, "pipes/%dr", i);
     if(unlink(pipe_name) < 0){
       perror("unlink");
-    }
-    close(file_descriptors[file_desc_iter]);
-    sprintf(pipe_name, "pipes/%dw", i);
-    if(unlink(pipe_name) < 0){
-      perror("unlink");
-    }
-    file_desc_iter++;
-  }
-  free(file_descriptors);
+    }  }
+  free(read_file_descs);
   free(pipe_name);
   free(input_dir);
 }
