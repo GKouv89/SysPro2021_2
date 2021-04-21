@@ -65,9 +65,20 @@ int main(int argc, char *argv[]){
       }
       file_desc_iter++;
   }
-  for(i = 1; i <= numMonitors; i += 2){
-    close(file_descriptors[i]);
-    close(file_descriptors[i+1]);
+  file_desc_iter = 0;
+  for(i = 1; i <= numMonitors; i++){
+    close(file_descriptors[file_desc_iter]);
+    file_desc_iter++;
+    sprintf(pipe_name, "pipes/%dr", i);
+    if(unlink(pipe_name) < 0){
+      perror("unlink");
+    }
+    close(file_descriptors[file_desc_iter]);
+    sprintf(pipe_name, "pipes/%dw", i);
+    if(unlink(pipe_name) < 0){
+      perror("unlink");
+    }
+    file_desc_iter++;
   }
   free(file_descriptors);
   free(pipe_name);
