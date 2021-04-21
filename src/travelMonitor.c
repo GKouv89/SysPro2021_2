@@ -37,7 +37,7 @@ int main(int argc, char *argv[]){
     }    
   }
   char *pipe_name = malloc(11*sizeof(char));
-  int *file_descriptors = malloc(2*numMonitors*sizeof(int));
+  int *read_file_descs = malloc(2*numMonitors*sizeof(int));
   int file_desc_iter = 0;
   for(i = 1; i <= numMonitors; i++){
       // Making the pipes 
@@ -59,7 +59,7 @@ int main(int argc, char *argv[]){
         fprintf(stderr, "errno: %d\n", errno);
         perror("mkfifo");
       }
-      file_descriptors[file_desc_iter] = open(pipe_name, O_WRONLY | O_NONBLOCK);
+      file_descriptors[file_desc_iter] = open(pipe_name, O_WRONLY);
       if(file_descriptors[file_desc_iter] < 0){
         perror("open");
       }
