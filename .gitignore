@@ -2,10 +2,11 @@
 *.d
 
 # Object files
-*.o
+build/*.o
 *.ko
 *.obj
 *.elf
+travelMonitor
 
 # Linker output
 *.ilk

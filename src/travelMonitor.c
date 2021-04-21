@@ -53,7 +53,6 @@ int main(int argc, char *argv[]){
         perror("open");
       }
   }
-  file_desc_iter = 0;
   for(i = 1; i <= numMonitors; i++){
     close(read_file_descs[i]);
     sprintf(pipe_name, "pipes/%dr", i);
