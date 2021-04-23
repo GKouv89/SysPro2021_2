@@ -11,5 +11,8 @@ travelMonitor: build/travelMonitor.o
 monitorProcess: build/monitorProcess.o
 	gcc -o $@ $^
 
+clean_log:
+	rm -f log_file.*
+
 clean:
-	rm -f travelMonitor build/*
+	rm -f travelMonitor monitorProcess build/*

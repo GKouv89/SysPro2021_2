@@ -30,9 +30,7 @@ int main(int argc, char *argv[]){
       case 'm': numMonitors = atoi(argv[i+1]);
             break;
       case 'b': bufferSize = atoi(argv[i+1]);
-		bufferSizeArg = malloc((strlen(argv[i+1])+1)*sizeof(char));
-		strcpy(bufferSizeArg, argv[i+1]);
-            break;
+		        break;
       case 's': sizeOfBloom = atoi(argv[i+1]);
             break;
       case 'i': strcpy(input_dir, argv[i+1]);
@@ -74,23 +72,20 @@ int main(int argc, char *argv[]){
   char *path = "monitorProcess"; 
   char *readPipe = malloc(11*sizeof(char));
   char *writePipe = malloc(11*sizeof(char));
-  char id[3];
   for(i = 1; i <= numMonitors; i++){
     if((pid = fork()) < 0){
       perror("fork");
       return 1;
     }
     if(pid == 0){
-      sprintf(id, "%d", i);
       sprintf(readPipe, "pipes/%dr", i);
       sprintf(writePipe, "pipes/%dw", i);
-      if(execlp(path, path, id, bufferSizeArg, readPipe, writePipe, NULL) < 0){
+      if(execlp(path, path, readPipe, writePipe, NULL) < 0){
         perror("execlp");
         return 1;
       }
     }
   }
-  free(bufferSizeArg);
   free(readPipe);
   free(writePipe);
   int *write_file_descs = malloc(numMonitors*sizeof(int));
@@ -103,6 +98,10 @@ int main(int argc, char *argv[]){
     printf("Opened pipe %s for writing\n", pipe_name);
     if(write_file_descs[i-1] < 0){
       perror("open write pipe");
+    }else{
+      if(write(write_file_descs[i-1], &bufferSize, sizeof(int)) < 0){
+        perror("write");
+      }
     }
   }
 /*char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
