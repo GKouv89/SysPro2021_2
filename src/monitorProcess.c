@@ -41,72 +41,84 @@ int main(int argc, char *argv[]){
 	sprintf(logFileName, "log_file.%d", mypid);
 	// About to read country names that this monitor will process
 	// If there are more, we will resize the array.
-	// int countriesLength = 10;
-	// char **countries = malloc(countriesLength*sizeof(char *)); // we assume that each monitor will read 10 directories.
-	// int i;
-	// for(i = 0; i < countriesLength; i++){
-	// 	countries[i] = calloc(255, sizeof(char));
-	// }
-	// int charactersRead, charactersParsed, countryIndex = 0, done = 0;
-	// char *readPipeBuffer = malloc(bufferSize*sizeof(char));
-	// while(!done){
-	// 	// printf("One reading operation about to be done.\n");
-	// 	if(select(readfd+1, &rd, NULL, NULL, NULL) == -1){
-	// 		perror("select");
-	// 		done = 1;
-	// 	}
-	// 	if(FD_ISSET(readfd)){
-	// 		if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
-	// 			perror("read");
-	// 			done = 1;
-	// 		}else{
-	// 			for(i = 0; i < charactersRead; i++){
-	// 				strncat(countries[countryIndex], readPipeBuffer + i, 1);
-	// 				printf("Character parsed: %c\n", readPipeBuffer[i]);
-	// 				// when we reach a terminal character, we have parsed one country name
-	// 				// and we must move to the next
-	// 				if(readPipeBuffer[i] == '\0'){
-	// 					if(strcmp(countries[countryIndex], "END") == 0){
-	// 						memset(countries[countryIndex], 0, 3);
-	// 						countryIndex--;
-	// 						done = 1;
-	// 						break;
-	// 					}
-	// 					memmove(readPipeBuffer, readPipeBuffer + i, bufferSize - i);
-	// 					countryIndex++;
-	// 					if(countryIndex == countriesLength){
-	// 						char **temp = realloc(countries, 2*countriesLength);
-	// 						for(i = countriesLength; i < 2*countriesLength; i++){
-	// 							countries[i] = calloc(255, sizeof(char));
-	// 						}
-	// 						assert(temp != NULL);
-	// 						countries = temp;
-	// 						countriesLength *= 2;
-	// 					}
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-	// } 
+	int countriesLength = 10;
+	char **countries = malloc(countriesLength*sizeof(char *)); // we assume that each monitor will read 10 directories.
+	int i;
+	for(i = 0; i < countriesLength; i++){
+		countries[i] = calloc(255, sizeof(char));
+	}
+	int charactersRead, charactersParsed = 0, countryIndex = 0, done = 0;
+	char currCountryLength;
+	char *readPipeBuffer = malloc(bufferSize*sizeof(char));
+	int repCount = 0;
+	while(!done && repCount < 15){
+		// Send confirmation to parent that
+		// either the bufferSize was received OK and therefore
+		// parent can send first country name or
+		// latest country name was received OK and therefore
+		// parent can send the next one.
+		if(write(writefd, "1", sizeof(char)) < 0){
+			perror("confirmation write");
+		}
+		// First thing read is the length of the first country name. 
+		if(select(readfd+1, &rd, NULL, NULL, NULL) == -1){
+			perror("country length select");
+			done = 1;
+		}
+		if(FD_ISSET(readfd, &rd)){
+			if(read(readfd, &currCountryLength, sizeof(char)) < 0){
+				perror("country length read");
+			}else{
+				// printf("Country length: %d\n", currCountryLength);
+				while(charactersParsed < currCountryLength){
+					if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
+						// perror("country chunk read");
+					}else{
+						// printf("Country chunk: %s\n", readPipeBuffer);
+						strncat(countries[countryIndex], readPipeBuffer, charactersRead);
+						charactersParsed+=charactersRead;
+					}		
+				}
+				if(strcmp(countries[countryIndex], "END") == 0){
+					memset(countries[countryIndex], 0, 3);
+					done = 1;
+					break;
+				}
+				countryIndex++;
+				charactersParsed = 0;
+				// printf("Next country");
+				// If need be, we allocate more space for next country names
+				if(countryIndex == countriesLength){
+					char **temp = realloc(countries, 2*countriesLength);
+					for(i = countriesLength; i < 2*countriesLength; i++){
+						countries[i] = calloc(255, sizeof(char));
+					}
+					assert(temp != NULL);
+					countries = temp;
+					countriesLength *= 2;
+				}
+			}
+		}	
+		repCount++;
+	} 
 	FILE *logfile = fopen(logFileName, "w");
-	// for(i = 0; i < countryIndex; i++){
-	// 	fprintf(logfile, "%s", countries[i]);
-	// }
-	fprintf(logfile, "bufferSize is: %d\n", bufferSize);
+	for(i = 0; i < countryIndex; i++){
+		fprintf(logfile, "%s\n", countries[i]);
+	}
 	assert(fclose(logfile) == 0);
-	// for(i = 0; i < countriesLength; i++){
-	// 	free(countries[i]);
-	// 	countries[i] = NULL;
-	// }
+	for(i = 0; i < countriesLength; i++){
+		free(countries[i]);
+		countries[i] = NULL;
+	}
 	// sleep(5);
-	// free(countries);
+	free(countries);
 	close(writefd);
 	close(readfd);
 	free(logFileName);
 	free(writePipeName);
 	free(readPipeName);	
 	// free(writePipeBuffer);
-	// free(readPipeBuffer);
+	free(readPipeBuffer);
 	// printf("Exiting...\n");
 	return 0;
 }
