@@ -5,6 +5,7 @@
 #include "../include/country.h"
 #include "../include/citizen.h"
 #include "../include/virus.h"
+#include "../include/setofbfs.h"
 
 void create_bucketList(bucketList **bl, typeOfList type){
   (*bl) = malloc(sizeof(bucketList));
@@ -45,6 +46,10 @@ void* search_bucketList(bucketList *bl, char *str){
       }
     }else if(bl->type == Citizen_List){
       if(isEqual_citizen(temp->content, str)){
+        return temp->content;
+      }
+    }else{
+      if(isEqual_setOfBFs(temp->content, str)){
         return temp->content;
       }
     }
@@ -120,6 +125,9 @@ void destroy_bucketList(bucketList **bl){
     }else if((*bl)->type == Citizen_List){
       Citizen *to_destroy = (Citizen *)to_del->content;
       destroy_citizen(&to_destroy);
+    }else{
+      setofbloomfilters *to_destroy = (setofbloomfilters *)to_del->content;
+      destroy_setOfBFs(&to_destroy);
     }
     free(to_del);
     to_del = NULL;

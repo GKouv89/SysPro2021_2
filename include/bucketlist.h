@@ -3,7 +3,7 @@
 
 #include "virus.h"
 
-typedef enum tol{Country_List, Virus_List, Citizen_List} typeOfList;
+typedef enum tol{Country_List, Virus_List, Citizen_List, BFLookup_List} typeOfList;
 
 typedef struct bucketlistnode{
   void *content;

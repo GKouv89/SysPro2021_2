@@ -1,12 +1,13 @@
 FLAGS = -g -c
-TRVLOBJ = build/hashmap.o build/country.o build/citizen.o build/virus.o build/bucketlist.o  build/bloomfilter.o
+TYPES = build/country.o build/citizen.o build/virus.o build/bloomfilter.o build/setofbfs.o
+TRVLOBJ = build/hashmap.o build/bucketlist.o
 
 all: travelMonitor monitorProcess
 
 build/%.o: src/%.c
 	gcc $(FLAGS) $< -o $@
 
-travelMonitor: build/travelMonitor.o $(TRVLOBJ)
+travelMonitor: build/travelMonitor.o $(TRVLOBJ) $(TYPES)
 	gcc -o $@ $^
 
 monitorProcess: build/monitorProcess.o
