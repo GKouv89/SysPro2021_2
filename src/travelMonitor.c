@@ -106,17 +106,18 @@ int main(int argc, char *argv[]){
 	}
 	char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
 	char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-	DIR *inputDirectory = opendir(input_dir);
-	struct dirent *currentFolder = readdir(inputDirectory);
+	struct dirent **alphabeticOrder;
+	int subdirCount;
+	subdirCount = scandir(input_dir, &alphabeticOrder, NULL, alphasort);
+	if(subdirCount == -1){
+		perror("scandir");
+	}
 	int charsCopied;
 	char countryLength = 0;
 	int roundRobin = 0;
 	fd_set rd;
-	while(currentFolder != NULL){
-		printf("roundRobin = %d\n", roundRobin);
-		if(strcmp(currentFolder->d_name, ".") == 0 || strcmp(currentFolder->d_name, "..") == 0){
-			printf("Dot or dot-dot\n");
-			currentFolder = readdir(inputDirectory);
+	for(i = 0; i < subdirCount; i++){
+		if(strcmp(alphabeticOrder[i]->d_name, ".") == 0 || strcmp(alphabeticOrder[i]->d_name, "..") == 0){
 			continue;
 		}
 		FD_ZERO(&rd);
@@ -129,13 +130,13 @@ int main(int argc, char *argv[]){
 				perror("read for child ok confirmation");
 			}
 			charsCopied = 0;
-			countryLength = strlen(currentFolder->d_name);
+			countryLength = strlen(alphabeticOrder[i]->d_name);
 			// printf("Writing country length %d\n", countryLength);
 			if(write(write_file_descs[roundRobin], &countryLength, sizeof(char)) < 0){
 				perror("write");
 			}else{
 				while(charsCopied < countryLength){
-					strncpy(pipeWriteBuffer, currentFolder->d_name + charsCopied, bufferSize);
+					strncpy(pipeWriteBuffer, alphabeticOrder[i]->d_name + charsCopied, bufferSize);
 					// printf("Writing country piece %s\n", pipeWriteBuffer);
 					if(write(write_file_descs[roundRobin], pipeWriteBuffer, bufferSize) < 0){
 						perror("write");
@@ -146,10 +147,11 @@ int main(int argc, char *argv[]){
 		}
 		roundRobin++;
 		roundRobin = roundRobin % numMonitors;
-		currentFolder = readdir(inputDirectory);
 	}
-	closedir(inputDirectory);
-	// printf("Country names distributed\n");
+	for(i = 0; i < subdirCount; i++){
+		free(alphabeticOrder[i]);
+	}
+	free(alphabeticOrder);
 	char *endOfMessage = "END";
 	for(i = 1; i <= numMonitors; i++){
 		FD_ZERO(&rd);
