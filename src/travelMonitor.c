@@ -89,6 +89,10 @@ int main(int argc, char *argv[]){
 	free(readPipe);
 	free(writePipe);
 	int *write_file_descs = malloc(numMonitors*sizeof(int));
+	char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
+	char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+	int charsCopied;
+	char countryLength = 0;
 	// Opening pipes created from monitors where parent will write
 	// the countries each monitor will process.
 	for(i = 1; i <= numMonitors; i++){
@@ -100,20 +104,34 @@ int main(int argc, char *argv[]){
 			perror("open write pipe");
 		}else{
 			if(write(write_file_descs[i-1], &bufferSize, sizeof(int)) < 0){
-				perror("write");
+				perror("write bufferSize");
+			}else{
+				// Waiting for confirmation from the child for bufferSize
+				while(read(read_file_descs[i-1], pipeReadBuffer, bufferSize) < 0);
+				// Letting monitors know input_dir's length and then name,
+				// so they have the full path to their subdirectories.
+				countryLength = strlen(input_dir); // Not an actual country yet.
+				if(write(write_file_descs[i-1], &countryLength, sizeof(char)) < 0){
+					perror("write input_dir length");
+				}else{
+					charsCopied = 0;
+					while(charsCopied < countryLength){
+						strncpy(pipeWriteBuffer, input_dir + charsCopied, bufferSize);
+						if(write(write_file_descs[i-1], pipeWriteBuffer, bufferSize) < 0){
+							perror("write input_dir chunk");
+						}
+						charsCopied += bufferSize;
+					}
+				}
 			}
 		}
 	}
-	char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
-	char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
 	struct dirent **alphabeticOrder;
 	int subdirCount;
 	subdirCount = scandir(input_dir, &alphabeticOrder, NULL, alphasort);
 	if(subdirCount == -1){
 		perror("scandir");
 	}
-	int charsCopied;
-	char countryLength = 0;
 	int roundRobin = 0;
 	fd_set rd;
 	for(i = 0; i < subdirCount; i++){

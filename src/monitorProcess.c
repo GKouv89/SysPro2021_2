@@ -23,7 +23,7 @@ int main(int argc, char *argv[]){
 	// Open the appropriate pipe created by parent for them to read and current process to write.
 	int writefd = open(writePipeName, O_WRONLY);
 	int bufferSize;
-	// Wait for necessary information to be sent from parent, such as the bufferSize
+	// Block until bufferSize is sent from parent. 
 	fd_set rd;
 	FD_ZERO(&rd);
 	FD_SET(readfd, &rd);
@@ -35,10 +35,6 @@ int main(int argc, char *argv[]){
 			perror("read");
 		}
 	}
-	// Create log file of current process and wait to receive country names from parent.
-	pid_t mypid = getpid();
-	char *logFileName = malloc(14*sizeof(char));
-	sprintf(logFileName, "log_file.%d", mypid);
 	// About to read country names that this monitor will process
 	// If there are more, we will resize the array.
 	int countriesLength = 10;
@@ -50,13 +46,14 @@ int main(int argc, char *argv[]){
 	int charactersRead, charactersParsed = 0, countryIndex = 0, done = 0;
 	char currCountryLength;
 	char *readPipeBuffer = malloc(bufferSize*sizeof(char));
-	int repCount = 0;
-	while(!done && repCount < 15){
+	while(!done){
 		// Send confirmation to parent that
 		// either the bufferSize was received OK and therefore
 		// parent can send first country name or
 		// latest country name was received OK and therefore
 		// parent can send the next one.
+		// The first country name truly received is the input_dir directory's name
+		// necessary in order to have the full path to the subdirectories.
 		if(write(writefd, "1", sizeof(char)) < 0){
 			perror("confirmation write");
 		}
@@ -69,12 +66,12 @@ int main(int argc, char *argv[]){
 			if(read(readfd, &currCountryLength, sizeof(char)) < 0){
 				perror("country length read");
 			}else{
-				// printf("Country length: %d\n", currCountryLength);
 				while(charactersParsed < currCountryLength){
 					if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
-						// perror("country chunk read");
+						// This means that the parent isn't done writing the chunk to the pipe,
+						// but it will be ready shortly, so we just move on to the next rep.
+						continue;
 					}else{
-						// printf("Country chunk: %s\n", readPipeBuffer);
 						strncat(countries[countryIndex], readPipeBuffer, charactersRead);
 						charactersParsed+=charactersRead;
 					}		
@@ -86,7 +83,6 @@ int main(int argc, char *argv[]){
 				}
 				countryIndex++;
 				charactersParsed = 0;
-				// printf("Next country");
 				// If need be, we allocate more space for next country names
 				if(countryIndex == countriesLength){
 					char **temp = realloc(countries, 2*countriesLength);
@@ -99,18 +95,21 @@ int main(int argc, char *argv[]){
 				}
 			}
 		}	
-		repCount++;
 	} 
+	// Create log file of current process and as a first test print country names received from parent.
+	pid_t mypid = getpid();
+	char *logFileName = malloc(14*sizeof(char));
+	sprintf(logFileName, "log_file.%d", mypid);
 	FILE *logfile = fopen(logFileName, "w");
 	for(i = 0; i < countryIndex; i++){
 		fprintf(logfile, "%s\n", countries[i]);
 	}
 	assert(fclose(logfile) == 0);
+	// Releasing resources...
 	for(i = 0; i < countriesLength; i++){
 		free(countries[i]);
 		countries[i] = NULL;
 	}
-	// sleep(5);
 	free(countries);
 	close(writefd);
 	close(readfd);
