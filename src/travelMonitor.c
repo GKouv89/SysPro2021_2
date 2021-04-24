@@ -9,6 +9,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../include/country.h"
+#include "../include/hashmap.h"
+
 extern int errno;
 
 int main(int argc, char *argv[]){
@@ -97,9 +100,7 @@ int main(int argc, char *argv[]){
 	// the countries each monitor will process.
 	for(i = 1; i <= numMonitors; i++){
 		sprintf(pipe_name, "pipes/%dw", i);
-		// printf("About to open pipe %s for writing\n", pipe_name);
 		write_file_descs[i-1] = open(pipe_name, O_WRONLY);
-		// printf("Opened pipe %s for writing\n", pipe_name);
 		if(write_file_descs[i-1] < 0){
 			perror("open write pipe");
 		}else{
@@ -107,6 +108,12 @@ int main(int argc, char *argv[]){
 				perror("write bufferSize");
 			}else{
 				// Waiting for confirmation from the child for bufferSize
+				while(read(read_file_descs[i-1], pipeReadBuffer, bufferSize) < 0);
+				// Letting child know size of bloomfilters
+				if(write(write_file_descs[i-1], &sizeOfBloom, sizeof(int)) < 0){
+					perror("write sizeOfBloom length");
+				}	
+				// Waiting for confirmation from the child for sizeOfBloom
 				while(read(read_file_descs[i-1], pipeReadBuffer, bufferSize) < 0);
 				// Letting monitors know input_dir's length and then name,
 				// so they have the full path to their subdirectories.
@@ -134,6 +141,7 @@ int main(int argc, char *argv[]){
 	}
 	int roundRobin = 0;
 	fd_set rd;
+	// distributing country names in alphabetical round robin fashion. 
 	for(i = 0; i < subdirCount; i++){
 		if(strcmp(alphabeticOrder[i]->d_name, ".") == 0 || strcmp(alphabeticOrder[i]->d_name, "..") == 0){
 			continue;
@@ -143,19 +151,16 @@ int main(int argc, char *argv[]){
 		if(select(read_file_descs[roundRobin] + 1, &rd, NULL, NULL, NULL) == -1){
 			perror("select for child ok confirmation");
 		}else{
-			// printf("Confirmation from child no %d\n", roundRobin);
 			if(read(read_file_descs[roundRobin], pipeReadBuffer, bufferSize) < 0){
 				perror("read for child ok confirmation");
 			}
 			charsCopied = 0;
 			countryLength = strlen(alphabeticOrder[i]->d_name);
-			// printf("Writing country length %d\n", countryLength);
 			if(write(write_file_descs[roundRobin], &countryLength, sizeof(char)) < 0){
 				perror("write");
 			}else{
 				while(charsCopied < countryLength){
 					strncpy(pipeWriteBuffer, alphabeticOrder[i]->d_name + charsCopied, bufferSize);
-					// printf("Writing country piece %s\n", pipeWriteBuffer);
 					if(write(write_file_descs[roundRobin], pipeWriteBuffer, bufferSize) < 0){
 						perror("write");
 					}
@@ -166,10 +171,6 @@ int main(int argc, char *argv[]){
 		roundRobin++;
 		roundRobin = roundRobin % numMonitors;
 	}
-	for(i = 0; i < subdirCount; i++){
-		free(alphabeticOrder[i]);
-	}
-	free(alphabeticOrder);
 	char *endOfMessage = "END";
 	for(i = 1; i <= numMonitors; i++){
 		FD_ZERO(&rd);
@@ -195,6 +196,26 @@ int main(int argc, char *argv[]){
 			}
 		}
 	}
+	// Creating lookup table for countries.
+	// Each virus will hold multiple bloomfilters and we must know which one
+	// is about the country in question. Each country will hold a payload, the result
+	// of the operation (index in alphabeticOrder) % numMonitors + 1. This is the
+	// number of the bloom filter in question.
+	hashMap *country_map;
+	create_map(&country_map, 43, Country_List);
+	int payload;
+	roundRobin = 0;
+	for(i = 0; i < subdirCount; i++){
+		if(strcmp(alphabeticOrder[i]->d_name, ".") == 0 || strcmp(alphabeticOrder[i]->d_name, "..") == 0){
+			free(alphabeticOrder[i]);
+			continue;
+		}
+		payload = roundRobin % numMonitors;
+		roundRobin++;
+		insert(country_map, alphabeticOrder[i]->d_name, (Country *) create_country(alphabeticOrder[i]->d_name, payload)); 
+		free(alphabeticOrder[i]);
+	}
+	free(alphabeticOrder);
 	// waiting for children to exit...
 	printf("About to wait for my kids...\n");
 	for(i = 1; i <= numMonitors; i++){
@@ -217,6 +238,7 @@ int main(int argc, char *argv[]){
 			perror("unlink");
 		}
   	}
+	destroy_map(&country_map);
 	free(pipeWriteBuffer);
 	free(pipeReadBuffer);
 	free(read_file_descs);

@@ -22,7 +22,7 @@ int main(int argc, char *argv[]){
 	int readfd = open(readPipeName, O_RDONLY | O_NONBLOCK);
 	// Open the appropriate pipe created by parent for them to read and current process to write.
 	int writefd = open(writePipeName, O_WRONLY);
-	int bufferSize;
+	int bufferSize, sizeOfBloom;
 	// Block until bufferSize is sent from parent. 
 	fd_set rd;
 	FD_ZERO(&rd);
@@ -32,6 +32,19 @@ int main(int argc, char *argv[]){
 	}
 	if(FD_ISSET(readfd, &rd)){ 
 		if(read(readfd, &bufferSize, sizeof(int)) < 0){
+			perror("read");
+		}else{
+			if(write(writefd, "1", sizeof(char)) < 0){
+				perror("confirmation for bufferSize write");
+			}
+		}
+	}
+	// Block until sizeOfBloom is sent from parent. 
+	if(select(readfd+1, &rd, NULL, NULL, NULL) == -1){
+		perror("select");
+	}
+	if(FD_ISSET(readfd, &rd)){ 
+		if(read(readfd, &sizeOfBloom, sizeof(int)) < 0){
 			perror("read");
 		}
 	}
