@@ -4,7 +4,6 @@
 typedef struct bf{
   int hash_func_amount;
   int size; // size of bloom filter in *bits*
-  unsigned long (*hash_function)(unsigned char*, unsigned int);
   unsigned char *filter;
 } bloomFilter;
 

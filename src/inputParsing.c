@@ -50,7 +50,9 @@ void inputFileParsing(hashMap *countries, hashMap *citizens, hashMap *viruses, F
     if(!erroneousRecord){
       country = (Country *) find_node(countries, country_name);
       if(country == NULL){
-        country = create_country(country_name);
+        // Index here is -1, as we won't use the index field for lookup purposes
+        // in monitorProcess, where this function is called from.
+        country = create_country(country_name, -1);
         insert(countries, country_name, country);        
       }
       citizen = (Citizen *) find_node(citizens, id);

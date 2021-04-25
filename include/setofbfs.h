@@ -17,7 +17,8 @@ typedef struct setofbfs{
 
 void create_setOfBFs(setofbloomfilters **, char *, int, int);
 int isEqual_setOfBFs(setofbloomfilters *, unsigned char *);
-void add_BFtoSet(setofbloomfilters *set);
+void add_BFtoSet(setofbloomfilters *set, int);
+int lookup_bf_vaccination(setofbloomfilters *, int, unsigned char *);
 void read_BF(setofbloomfilters *set, int, int , int);
 void destroy_setOfBFs(setofbloomfilters **);
 #endif

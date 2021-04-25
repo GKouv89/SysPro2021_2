@@ -33,7 +33,6 @@ void create_bloomFilter(bloomFilter **bf, int size, int hf_amt){
   // we convert it to bits
   (*bf)->hash_func_amount = hf_amt;
   (*bf)->size = 8*size;
-  (*bf)->hash_function = &hash_i;
   (*bf)->filter = calloc(size, sizeof(unsigned char));
 }
 
@@ -42,7 +41,7 @@ void insert_in_bloomFilter(bloomFilter *bf, unsigned char *str){
   unsigned long hash;
   int div, mod;
   for(int i = 0; i < bf->hash_func_amount; i++){
-    hash = (*(bf->hash_function))(str, i);
+    hash = hash_i(str, i);
     hash = hash % bf->size;
     div = hash/8; // which byte of the filter array are we in?
     mod = hash%8; // which bit of the byte do we wish to change?
@@ -59,7 +58,7 @@ int lookup_in_bloomFilter(bloomFilter *bf, unsigned char *str){
   unsigned long hash;
   int div, mod, exists = 1;
   for(int i = 0; i < bf->hash_func_amount; i++){
-    hash = (*(bf->hash_function))(str, i);
+    hash = hash_i(str, i);
     hash = hash % bf->size;
     div = hash/8; // which byte of the filter array are we in?
     mod = hash%8; // which bit of the byte do we wish to examine?
@@ -78,7 +77,6 @@ int lookup_in_bloomFilter(bloomFilter *bf, unsigned char *str){
 void destroy_bloomFilter(bloomFilter **bf){
   free((*bf)->filter);
   (*bf)->filter = NULL;
-  (*bf)->hash_function = NULL;
   free(*bf);
   *bf = NULL;
 }
