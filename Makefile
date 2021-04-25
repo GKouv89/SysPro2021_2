@@ -19,11 +19,13 @@ monitorProcess: build/monitorProcess.o $(COMMON) $(MONITOROBJ)
 testbuild/%.o: test/%.c
 	gcc $(FLAGS) $< -o $@
 
-testsetofbfs: testbuild/testsetofbfs.o $(TRVLOBJ) $(MONITOROBJ) $(TYPES) 
+testsetofbfs: testbuild/testsetofbfs.o $(COMMON) $(MONITOROBJ) 
 	gcc -o $@ $^ $(LINK)
 
 testBloomFilter: testbuild/testBloomFilter.o build/bloomfilter.o
 	gcc -o $@ $<  build/bloomfilter.o -DK=2
+
+clean_all: clean_log clean_tests clean
 
 clean_log:
 	rm -f log_file.*
