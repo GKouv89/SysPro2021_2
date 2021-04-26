@@ -3,10 +3,15 @@
 #include <sys/errno.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+
+#include "../include/inputparsing.h"
+#include "../include/hashmap.h"
+#include "../include/skiplist.h"
 
 int main(int argc, char *argv[]){
 	// Arguments passed through exec:
@@ -108,7 +113,54 @@ int main(int argc, char *argv[]){
 				}
 			}
 		}	
-	} 
+	}
+	// First, a hashmap for each of the following: virus, country, citizen.
+	// Arguments to inputParsing, the function that will initialize our data structures with the data.
+	// in the input files.
+
+	///////////////////////////////////////////////////////////////
+	hashMap *country_map, *virus_map, *citizen_map;
+	// Prime bucket of numbers for all hashmaps
+	// virusesFile has only about 12 viruses
+	// and countriesFile contains 195 countries
+	// so the primes were chosen to be an order of magnitude
+	// smaller than the size of the respective file
+	// for citizens, perhaps the input file will have few lines,
+	// but perhaps it will have upwards of 1000 records.
+	// In any case, this allows for insertion of multiple records
+	// after reading the input file
+	create_map(&country_map, 43, Country_List);
+	create_map(&virus_map, 3, Virus_List);
+	create_map(&citizen_map, 101, Citizen_List);
+	//////////////////////////////////////////////////////////////// 
+
+	// Read files from subdirectories, create data structures. 
+	char *full_file_name = malloc(512*sizeof(char));
+	char *working_dir = malloc(512*sizeof(char));
+	struct dirent *curr_subdir;
+	FILE *curr_file;
+	for(i = 1; i < countryIndex; i++){
+		strcpy(working_dir, countries[0]);
+		strcat(working_dir, "/");
+		strcat(working_dir, countries[i]);
+		DIR *work_dir = opendir(working_dir);
+		curr_subdir = readdir(work_dir);
+		while(curr_subdir != NULL){
+			if(strcmp(curr_subdir->d_name, ".") == 0 || strcmp(curr_subdir->d_name, "..") == 0){
+				curr_subdir = readdir(work_dir);
+				continue;
+			}
+			strcpy(full_file_name, working_dir);
+			strcat(full_file_name, "/");
+			strcat(full_file_name, curr_subdir->d_name);
+			curr_file = fopen(full_file_name, "r");
+			assert(curr_file != NULL);
+			inputFileParsing(country_map, citizen_map, virus_map, curr_file, sizeOfBloom);
+			assert(fclose(curr_file) == 0);			
+			curr_subdir = readdir(work_dir);
+		}
+		closedir(work_dir);
+	}
 	// Create log file of current process and as a first test print country names received from parent.
 	pid_t mypid = getpid();
 	char *logFileName = malloc(14*sizeof(char));
@@ -123,6 +175,7 @@ int main(int argc, char *argv[]){
 		free(countries[i]);
 		countries[i] = NULL;
 	}
+
 	free(countries);
 	close(writefd);
 	close(readfd);
@@ -131,6 +184,11 @@ int main(int argc, char *argv[]){
 	free(readPipeName);	
 	// free(writePipeBuffer);
 	free(readPipeBuffer);
+	free(full_file_name);
+	free(working_dir);
+	destroy_map(&country_map);
+	destroy_map(&citizen_map);
+	destroy_map(&virus_map);
 	// printf("Exiting...\n");
 	return 0;
 }
