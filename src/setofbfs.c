@@ -39,9 +39,11 @@ int lookup_bf_vaccination(setofbloomfilters *set, int index, unsigned char *str)
 }
 
 void destroy_setOfBFs(setofbloomfilters **set){
-    for(int i = 0; i < (*set)->length; i++){
-        destroy_bloomFilter(&((*set)->bfs[i]));
-        (*set)->bfs[i] = NULL;
+    for(int i = 0; i < (*set)->capacity; i++){
+        if((*set)->bfs[i] != NULL){
+            destroy_bloomFilter(&((*set)->bfs[i]));
+            (*set)->bfs[i] = NULL;
+        }
     }
     free((*set)->bfs);
     free((*set)->virusName);

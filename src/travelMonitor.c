@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../include/setofbfs.h"
 #include "../include/country.h"
 #include "../include/hashmap.h"
 
@@ -216,6 +217,10 @@ int main(int argc, char *argv[]){
 		free(alphabeticOrder[i]);
 	}
 	free(alphabeticOrder);
+	// Creating hashMap of sets of bloomfilters.
+	hashMap *setOfBFs_map;
+	create_map(&setOfBFs_map, 3, BFLookup_List);
+	setofbloomfilters *curr_set;
 	// This array shows from which monitors we have NOT received
 	// their bloomfilters yet. When we receive the bloom filters of one monitor,
 	// the respective element in this array takes the value zero.
@@ -262,6 +267,14 @@ int main(int argc, char *argv[]){
 								break;
 							}else{
 								printf("Received faux bloom filter for Virus %s from monitor %d\n", virusName, k);
+								curr_set = (setofbloomfilters *) find_node(setOfBFs_map, virusName);
+								if(curr_set == NULL){
+									create_setOfBFs(&curr_set, virusName, numMonitors, sizeOfBloom);
+									add_BFtoSet(curr_set, k);
+									insert(setOfBFs_map, virusName, curr_set);
+								}else{
+									add_BFtoSet(curr_set, k);
+								}
 								if(write(write_file_descs[k], "1", sizeof(char)) < 0){
 									perror("write confirmation after receiving virus name");
 								}
@@ -313,6 +326,7 @@ int main(int argc, char *argv[]){
 		}
   	}
 	destroy_map(&country_map);
+	destroy_map(&setOfBFs_map);
 	free(pipeWriteBuffer);
 	free(pipeReadBuffer);
 	free(read_file_descs);
