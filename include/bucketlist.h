@@ -20,6 +20,7 @@ void create_bucketList(bucketList **, typeOfList);
 void insert_bucketNode(bucketList *, void *);
 void print_bucketList(bucketList *);
 void* search_bucketList(bucketList *, char *);
+void send_virus_Bloomfilters(bucketList *, int, int, int);
 // void vacStatus_all(bucketList *, unsigned char *);
 // void popStatus_all(bucketList *, int, Virus *, char *, char *);
 void destroy_bucketList(bucketList **);

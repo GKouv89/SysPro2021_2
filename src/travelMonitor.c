@@ -216,6 +216,79 @@ int main(int argc, char *argv[]){
 		free(alphabeticOrder[i]);
 	}
 	free(alphabeticOrder);
+	// This array shows from which monitors we have NOT received
+	// their bloomfilters yet. When we receive the bloom filters of one monitor,
+	// the respective element in this array takes the value zero.
+	int *read_bloom_descs = malloc(numMonitors*sizeof(int));
+	FD_ZERO(&rd);
+	for(i = 0; i < numMonitors; i++){
+		FD_SET(read_file_descs[i], &rd);
+		read_bloom_descs[i] = 1;
+	}
+	int max = read_file_descs[i-1] + 1;
+	char dataLength, charactersRead, charactersParsed;
+	char *virusName = calloc(255, sizeof(char));
+	for(i = 0; i < numMonitors; ){
+		if(select(max, &rd, NULL, NULL, NULL) == -1){
+			perror("select virus names");
+		}else{
+			for(int k = 0; k < numMonitors; k++){
+				if(read_bloom_descs[k] == 1 && FD_ISSET(read_file_descs[k], &rd)){
+					// We will now read from the monitor process no. i
+					printf("About to receive faux bloom filters from monitor %d\n", k);
+					// Reading...
+					while(1){
+						if(read(read_file_descs[k], &dataLength, sizeof(char)) < 0){
+							// perror("read virus name length");
+							continue;
+						}else{
+							printf("Virus name length: %d\n", dataLength);
+							charactersParsed = 0;
+							while(charactersParsed < dataLength){
+								if((charactersRead = read(read_file_descs[k], pipeReadBuffer, bufferSize)) < 0){
+									// This means that the monitor isn't done writing the chunk to the pipe,
+									// but it will be ready shortly, so we just move on to the next rep.
+									continue;
+								}else{
+									strncat(virusName, pipeReadBuffer, charactersRead);
+									charactersParsed+=charactersRead;
+								}		
+							}
+							if(strcmp(virusName, "END") == 0){
+								printf("Done receiving from monitor no %d\n", k);
+								i++;
+								memset(virusName, 0, 255*sizeof(char));
+								break;
+							}else{
+								printf("Received faux bloom filter for Virus %s from monitor %d\n", virusName, k);
+								if(write(write_file_descs[k], "1", sizeof(char)) < 0){
+									perror("write confirmation after receiving virus name");
+								}
+								memset(virusName, 0, 255*sizeof(char));
+							}
+						}
+					}
+					// After reading, we must reinitialize the set of file descs
+					// that we expect 'traffic' from.
+					read_bloom_descs[k] = 0;
+				}
+			}
+			max = 0;
+			FD_ZERO(&rd);
+			for(int j = 0; j < numMonitors; j++){
+				if(read_bloom_descs[j] == 1){
+					FD_SET(read_file_descs[j], &rd);
+					if(read_file_descs[j] > max){
+						max = read_file_descs[j];
+					}
+				}
+			}
+			max++;			
+		}
+
+	}
+	free(read_bloom_descs);
+	free(virusName);
 	// waiting for children to exit...
 	printf("About to wait for my kids...\n");
 	for(i = 1; i <= numMonitors; i++){

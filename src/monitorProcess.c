@@ -161,6 +161,8 @@ int main(int argc, char *argv[]){
 		}
 		closedir(work_dir);
 	}
+	 send_bloomFilters(virus_map, readfd, writefd, bufferSize);
+
 	// Create log file of current process and as a first test print country names received from parent.
 	pid_t mypid = getpid();
 	char *logFileName = malloc(14*sizeof(char));

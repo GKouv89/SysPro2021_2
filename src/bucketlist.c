@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 
 #include "../include/bucketlist.h"
 #include "../include/country.h"
@@ -57,6 +59,41 @@ void* search_bucketList(bucketList *bl, char *str){
   }
   return NULL;
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// This is called when the monitor process is about to send the bloomfilters //
+// after the first reading of the files.                                     //
+///////////////////////////////////////////////////////////////////////////////
+
+void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int bufferSize){
+   if(bl->type == Virus_List){
+      bucketNode *temp = bl->front;
+      char virusNameLength, charsCopied;
+      char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+      char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
+      while(temp){
+        // First, send virus name length.
+        virusNameLength = strlen(((Virus *)temp->content)->name);
+        if(write(writefd, &virusNameLength, sizeof(char)) < 0){
+            perror("write virus name length");
+        }else{
+          charsCopied = 0;
+          while(charsCopied < virusNameLength){
+            strncpy(pipeWriteBuffer, ((Virus *)temp->content)->name + charsCopied, bufferSize);
+            if(write(writefd, pipeWriteBuffer, bufferSize) < 0){
+              perror("write virus name chunk");
+            }
+            charsCopied += bufferSize;
+          }
+          while(read(readfd, pipeReadBuffer, bufferSize) < 0);
+        }
+        temp = temp->next;
+      }
+      free(pipeWriteBuffer);
+      free(pipeReadBuffer);
+   } 
+}
+
 
 ///////////////////////////////////////////////////////////////
 // The command that is called when vaccineStatus is called   //

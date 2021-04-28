@@ -1,5 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
 #include "../include/hashmap.h"
 #include "../include/bloomfilter.h"
 
@@ -26,6 +29,35 @@ void insert(hashMap *map, unsigned char *key, void *content){
 void* find_node(hashMap *map, unsigned char *key){
   unsigned long hash = hash_function(map, key);
   search_bucketList(map->map[hash]->bl, key);
+}
+
+/////////////////////////////////////////////////////////////////
+// This function is called only with the viruses hashmap       //
+// for the first argument. Basically searches for each element //
+// in each bucket, i.e. each virus, and sends the virus'       //
+// bloom filter to the parent.                                 //
+/////////////////////////////////////////////////////////////////
+
+void send_bloomFilters(hashMap *map, int readfd, int writefd, int bufferSize){
+    for(int i = 0; i < map->noOfBuckets; i++){
+      send_virus_Bloomfilters(map->map[i]->bl, readfd, writefd, bufferSize);
+    }
+    char *endStr = "END";
+    char charsCopied, endStrLen = 3;
+    char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+    if(write(writefd, &endStrLen, sizeof(char)) < 0){
+      perror("write END length");
+    }else{ 
+      charsCopied = 0;
+      while(charsCopied < endStrLen){
+        strncpy(pipeWriteBuffer, endStr + charsCopied, bufferSize);
+        if(write(writefd, pipeWriteBuffer, bufferSize) < 0){
+          perror("write END chunk");
+        }
+        charsCopied += bufferSize;
+      }
+    }
+    free(pipeWriteBuffer);
 }
 
 /////////////////////////////////////////////////////////////////
