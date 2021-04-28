@@ -229,6 +229,7 @@ int main(int argc, char *argv[]){
 	char dataLength, charactersRead, charactersParsed;
 	char *virusName = calloc(255, sizeof(char));
 	for(i = 0; i < numMonitors; ){
+		printf("Iteration of select/read duo...\n");
 		if(select(max, &rd, NULL, NULL, NULL) == -1){
 			perror("select virus names");
 		}else{

@@ -165,7 +165,7 @@ int main(int argc, char *argv[]){
 
 	// Create log file of current process and as a first test print country names received from parent.
 	pid_t mypid = getpid();
-	char *logFileName = malloc(14*sizeof(char));
+	char *logFileName = malloc(20*sizeof(char));
 	sprintf(logFileName, "log_file.%d", mypid);
 	FILE *logfile = fopen(logFileName, "w");
 	for(i = 0; i < countryIndex; i++){

@@ -35,14 +35,14 @@ void inputFileParsing(hashMap *countries, hashMap *citizens, hashMap *viruses, F
       // normally, we would expect no date after that
       if(date != NULL){
         erroneousRecord = 1;
-        printf("ERROR IN RECORD %s %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus, date);
+        // printf("ERROR IN RECORD %s %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus, date);
       }else{
         temp = strtok(vacStatus, "\n");
       }
     }else{
       if(date == NULL){
         erroneousRecord = 1;
-        printf("ERROR IN RECORD %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus);        
+        // printf("ERROR IN RECORD %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus);        
       }else{
         temp = strtok(date, "\n");
       }
@@ -62,7 +62,7 @@ void inputFileParsing(hashMap *countries, hashMap *citizens, hashMap *viruses, F
       }else{
         citizen_compare = create_citizen(id, firstName, lastName, atoi(age), country);
         if(!compare_citizens(citizen, citizen_compare)){
-          printf("ERROR: CITIZEN %s already exists with different data\n", id);
+          // printf("ERROR: CITIZEN %s already exists with different data\n", id);
           destroy_citizen(&citizen_compare);
           continue;
         }
@@ -84,16 +84,16 @@ void inputFileParsing(hashMap *countries, hashMap *citizens, hashMap *viruses, F
         }else if((possibleDupe = lookup_in_virus_vaccinated_for_list(virus, atoi(id))) == NULL){
           insert_in_not_vaccinated_for_list(virus, atoi(id), citizen);
         }else{
-          printf("ERROR IN RECORD %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus);
-          printf("CITIZEN ALREADY VACCINATED ON %s\n\n", possibleDupe->vaccinationDate);          
+          // printf("ERROR IN RECORD %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus);
+          // printf("CITIZEN ALREADY VACCINATED ON %s\n\n", possibleDupe->vaccinationDate);          
         }
       }else{
         if(lookup_in_virus_not_vaccinated_for_list(virus, atoi(id))){
           // Ignoring duplicate case where first record for same citizen and virus
           // mentions that the citizen is not vaccinated for the virus
           // and second record says citizen is vaccinated.
-          printf("ERROR IN RECORD %s %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus, date);
-          printf("CITIZEN HAS A NEGATIVE VACCINATION RECORD FOR THIS VIRUS\n\n");
+          // printf("ERROR IN RECORD %s %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus, date);
+          // printf("CITIZEN HAS A NEGATIVE VACCINATION RECORD FOR THIS VIRUS\n\n");
           continue;
         }
         // printf("looking to see whether %s is vaccinated against %s\n", id, virus->name);
@@ -102,8 +102,8 @@ void inputFileParsing(hashMap *countries, hashMap *citizens, hashMap *viruses, F
           // Ignoring duplicate case where both records for same citizen and virus
           // mention that the citizen is vaccinated for the virus but the records
           // have different vaccination dates
-          printf("ERROR IN RECORD %s %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus, date);
-          printf("CITIZEN ALREADY VACCINATED ON %s\n\n", possibleDupe->vaccinationDate);          
+          // printf("ERROR IN RECORD %s %s %s %s %s %s %s %s\n", id, firstName, lastName, country_name, age, virus_name, vacStatus, date);
+          // printf("CITIZEN ALREADY VACCINATED ON %s\n\n", possibleDupe->vaccinationDate);          
           continue;
         }
         insert_in_virus_bloomFilter(virus, id);
