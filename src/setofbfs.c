@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <assert.h>
 
 #include "../include/setofbfs.h"
@@ -36,6 +37,29 @@ void add_BFtoSet(setofbloomfilters *set, int index){
 
 int lookup_bf_vaccination(setofbloomfilters *set, int index, unsigned char *str){
     return lookup_in_bloomFilter(set->bfs[index], str);
+}
+
+void read_BF(setofbloomfilters *set, int readfd, int writefd, int index, int bufferSize){
+    char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
+    char pipeWriteBuffer;
+    int bytesRead, bytesParsed = 0;
+    int sizeOfBloom = (set->bfs[index]->size)/8;
+    while(bytesParsed < sizeOfBloom){
+        // printf("bytesParsed: %d\n", bytesParsed);
+        if((bytesRead = read(readfd, pipeReadBuffer, bufferSize*sizeof(char))) < 0){
+            // This just means that the child process hasn't written the next chunk yet, but will soon.
+            continue;
+        }else{
+            memcpy(set->bfs[index]->filter + bytesParsed, pipeReadBuffer, bytesRead*sizeof(char));
+            bytesParsed += bytesRead;
+        }
+    }
+    printf("BLOOM READ\n");
+    pipeWriteBuffer = '1';
+    if(write(writefd, &pipeWriteBuffer, sizeof(char)) < 0){
+        perror("write bf confirmation\n");
+    }
+    free(pipeReadBuffer);
 }
 
 void destroy_setOfBFs(setofbloomfilters **set){

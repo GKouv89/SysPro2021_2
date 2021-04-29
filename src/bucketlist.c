@@ -68,9 +68,12 @@ void* search_bucketList(bucketList *bl, char *str){
 void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int bufferSize){
    if(bl->type == Virus_List){
       bucketNode *temp = bl->front;
-      char virusNameLength, charsCopied;
+      unsigned char virusNameLength, charsCopied, charsToWrite;
       char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
       char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
+      bloomFilter *bf;
+      int bfSize;
+      int bytesTransferred;
       while(temp){
         // First, send virus name length.
         virusNameLength = strlen(((Virus *)temp->content)->name);
@@ -85,6 +88,26 @@ void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int buffer
             }
             charsCopied += bufferSize;
           }
+          // Waiting for confirmation that the virus name was received in its entirety.
+          while(read(readfd, pipeReadBuffer, bufferSize) < 0);
+          bf = ((Virus *)temp->content)->virusBF;
+          bytesTransferred = 0;
+          bfSize = (bf->size)/8;
+          // At first, just COPYING the filter chunk by chunk to the buffer
+          while(bytesTransferred < bfSize){
+            if(bfSize - bytesTransferred < bufferSize){
+              charsToWrite = bfSize - bytesTransferred;
+            }else{
+              charsToWrite = bufferSize;
+            }
+            memcpy(pipeWriteBuffer, bf->filter + bytesTransferred, charsToWrite*sizeof(char));
+            bytesTransferred += charsToWrite;
+            // printf("bytesTransferred: %d\n", bytesTransferred);
+            if(write(writefd, pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
+              perror("write bf chunk\n");
+            }
+          }
+          printf("BLOOM COPIED\n");
           while(read(readfd, pipeReadBuffer, bufferSize) < 0);
         }
         temp = temp->next;

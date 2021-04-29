@@ -278,6 +278,7 @@ int main(int argc, char *argv[]){
 								if(write(write_file_descs[k], "1", sizeof(char)) < 0){
 									perror("write confirmation after receiving virus name");
 								}
+								read_BF(curr_set, read_file_descs[k], write_file_descs[k], k, bufferSize);
 								memset(virusName, 0, 255*sizeof(char));
 							}
 						}
