@@ -172,7 +172,7 @@ int main(int argc, char *argv[]){
 	}
   send_bloomFilters(virus_map, readfd, writefd, bufferSize);
 
-  sleep(20);
+  while(1);
 
 	// Releasing resources...
 	// for(i = 0; i < countriesLength; i++){

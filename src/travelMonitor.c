@@ -356,6 +356,8 @@ int main(int argc, char *argv[]){
     }
   }
 	free(command);
+	free(citizenID);
+	free(countryName);
 	free(read_bloom_descs);
 	free(virusName);
   free(children_pids);
