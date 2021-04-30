@@ -304,16 +304,40 @@ int main(int argc, char *argv[]){
 			}
 			max++;			
 		}
-
 	}
   printf("Received data from children processes.\n");
   size_t command_length = 1024, actual_length;
   char *command = malloc(command_length*sizeof(char));
   char *command_name, *rest;
+  char *citizenID = malloc(5*sizeof(char));
+  char *countryName = malloc(255*sizeof(char));
+  Country *curr_country;
   while(1){
     actual_length = getline(&command, &command_length, stdin);
     command_name = strtok_r(command, " ", &rest);
-    if(strcmp(command_name, "/exit\n") == 0){
+    if(strcmp(command_name, "/travelRequest") == 0){
+      if(sscanf(rest, "%s %s %s", citizenID, countryName, virusName) == 3){
+        curr_set = (setofbloomfilters *) find_node(setOfBFs_map, virusName);
+		    if(curr_set == NULL){
+          printf("No such virus: %s\n", virusName);
+          continue;
+        }else{
+          // Find which monitor handled the country's subdirectory
+          curr_country = (Country *) find_node(country_map, countryName);
+          if(curr_country == NULL){
+            printf("No such country: %s\n", countryName);
+            continue;
+          }
+          if(lookup_bf_vaccination(curr_set, curr_country->index, citizenID) == 1){
+            printf("MAYBE\n");
+          }else{
+            printf("NOT VACCINATED\n");
+          }
+        } 
+      }else{
+        printf("Bad arguments to /travelRequest. Try again.\n");
+      }
+    }else if(strcmp(command_name, "/exit\n") == 0){
       for(i = 0; i < numMonitors; i++){
         kill(children_pids[i], 9);
       }
