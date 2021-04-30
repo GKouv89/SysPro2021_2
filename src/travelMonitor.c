@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 
 #include "../include/setofbfs.h"
 #include "../include/country.h"
@@ -73,6 +74,7 @@ int main(int argc, char *argv[]){
 	// the bufferSizeArgument, and the pipes for communication.
 	// readPipe is the pipe from which the parent reads and the monitor writes to.
 	// writePipe is the pipe for the opposite direction of communication.
+  int *children_pids = malloc(numMonitors*sizeof(int));
 	char *path = "monitorProcess"; 
 	char *readPipe = malloc(11*sizeof(char));
 	char *writePipe = malloc(11*sizeof(char));
@@ -88,7 +90,9 @@ int main(int argc, char *argv[]){
 				perror("execlp");
 				return 1;
 			}
-		}
+		}else{
+      children_pids[i] = pid;
+    }
 	}
 	free(readPipe);
 	free(writePipe);
@@ -234,21 +238,21 @@ int main(int argc, char *argv[]){
 	char dataLength, charactersRead, charactersParsed;
 	char *virusName = calloc(255, sizeof(char));
 	for(i = 0; i < numMonitors; ){
-		printf("Iteration of select/read duo...\n");
+		// printf("Iteration of select/read duo...\n");
 		if(select(max, &rd, NULL, NULL, NULL) == -1){
 			perror("select virus names");
 		}else{
 			for(int k = 0; k < numMonitors; k++){
 				if(read_bloom_descs[k] == 1 && FD_ISSET(read_file_descs[k], &rd)){
 					// We will now read from the monitor process no. i
-					printf("About to receive faux bloom filters from monitor %d\n", k);
+					// printf("About to receive faux bloom filters from monitor %d\n", k);
 					// Reading...
 					while(1){
 						if(read(read_file_descs[k], &dataLength, sizeof(char)) < 0){
 							// perror("read virus name length");
 							continue;
 						}else{
-							printf("Virus name length: %d\n", dataLength);
+							// printf("Virus name length: %d\n", dataLength);
 							charactersParsed = 0;
 							while(charactersParsed < dataLength){
 								if((charactersRead = read(read_file_descs[k], pipeReadBuffer, bufferSize)) < 0){
@@ -261,12 +265,12 @@ int main(int argc, char *argv[]){
 								}		
 							}
 							if(strcmp(virusName, "END") == 0){
-								printf("Done receiving from monitor no %d\n", k);
+								// printf("Done receiving from monitor no %d\n", k);
 								i++;
 								memset(virusName, 0, 255*sizeof(char));
 								break;
 							}else{
-								printf("Received faux bloom filter for Virus %s from monitor %d\n", virusName, k);
+								// printf("Received faux bloom filter for Virus %s from monitor %d\n", virusName, k);
 								curr_set = (setofbloomfilters *) find_node(setOfBFs_map, virusName);
 								if(curr_set == NULL){
 									create_setOfBFs(&curr_set, virusName, numMonitors, sizeOfBloom);
@@ -302,18 +306,33 @@ int main(int argc, char *argv[]){
 		}
 
 	}
+  printf("Received data from children processes.\n");
+  size_t command_length = 1024, actual_length;
+  char *command = malloc(command_length*sizeof(char));
+  char *command_name, *rest;
+  while(1){
+    actual_length = getline(&command, &command_length, stdin);
+    command_name = strtok_r(command, " ", &rest);
+    if(strcmp(command_name, "/exit") == 0){
+      for(i = 0; i < numMonitors; i++){
+        kill(children_pids[i], 9);
+      }
+      // waiting for children to exit...
+      // printf("About to wait for my kids...\n");
+      for(i = 1; i <= numMonitors; i++){
+        printf("Waiting for kid no %d\n", i);
+        if(wait(NULL) == -1){
+          perror("wait");
+          return 1;
+        }
+      }
+      break;
+    }
+  }
 	free(read_bloom_descs);
 	free(virusName);
-	// waiting for children to exit...
-	printf("About to wait for my kids...\n");
-	for(i = 1; i <= numMonitors; i++){
-		printf("Waiting for kid no %d\n", i);
-		if(wait(NULL) == -1){
-			perror("wait");
-			return 1;
-		}
-	}
-  	// Closing and deleting all pipes
+  free(children_pids);
+  // Closing and deleting all pipes
 	for(i = 1; i <= numMonitors; i++){
 		close(read_file_descs[i-1]);
 		sprintf(pipe_name, "pipes/%dr", i);

@@ -8,12 +8,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <signal.h>
 
 #include "../include/inputparsing.h"
 #include "../include/hashmap.h"
 #include "../include/skiplist.h"
 
+char **countries;
+int acceptedRequests = 0;
+int rejectedRequests = 0;
+int totalRequests = 0;
+int countryIndex = 0;
+
+void closingHandler(int);
+
 int main(int argc, char *argv[]){
+  signal(SIGKILL, closingHandler);
 	// Arguments passed through exec:
 	// An ID number: it's the number of the monitor process
 	// from the parent's perspective. Needed so the monitor
@@ -56,12 +66,12 @@ int main(int argc, char *argv[]){
 	// About to read country names that this monitor will process
 	// If there are more, we will resize the array.
 	int countriesLength = 10;
-	char **countries = malloc(countriesLength*sizeof(char *)); // we assume that each monitor will read 10 directories.
+	countries = malloc(countriesLength*sizeof(char *)); // we assume that each monitor will read 10 directories.
 	int i;
 	for(i = 0; i < countriesLength; i++){
 		countries[i] = calloc(255, sizeof(char));
 	}
-	int charactersRead, charactersParsed = 0, countryIndex = 0, done = 0;
+	int charactersRead, charactersParsed = 0, done = 0;
 	char currCountryLength;
 	char *readPipeBuffer = malloc(bufferSize*sizeof(char));
 	while(!done){
@@ -161,36 +171,45 @@ int main(int argc, char *argv[]){
 		}
 		closedir(work_dir);
 	}
-	 send_bloomFilters(virus_map, readfd, writefd, bufferSize);
+  send_bloomFilters(virus_map, readfd, writefd, bufferSize);
 
-	// Create log file of current process and as a first test print country names received from parent.
-	pid_t mypid = getpid();
-	char *logFileName = malloc(20*sizeof(char));
-	sprintf(logFileName, "log_file.%d", mypid);
-	FILE *logfile = fopen(logFileName, "w");
-	for(i = 0; i < countryIndex; i++){
-		fprintf(logfile, "%s\n", countries[i]);
-	}
-	assert(fclose(logfile) == 0);
+  sleep(20);
+
 	// Releasing resources...
-	for(i = 0; i < countriesLength; i++){
-		free(countries[i]);
-		countries[i] = NULL;
-	}
+	// for(i = 0; i < countriesLength; i++){
+		// free(countries[i]);
+		// countries[i] = NULL;
+	// }
 
-	free(countries);
-	close(writefd);
-	close(readfd);
-	free(logFileName);
-	free(writePipeName);
-	free(readPipeName);	
+	// free(countries);
+	// close(writefd);
+	// close(readfd);
+	// free(logFileName);
+	// free(writePipeName);
+	// free(readPipeName);	
 	// free(writePipeBuffer);
-	free(readPipeBuffer);
-	free(full_file_name);
-	free(working_dir);
-	destroy_map(&country_map);
-	destroy_map(&citizen_map);
-	destroy_map(&virus_map);
+	// free(readPipeBuffer);
+	// free(full_file_name);
+	// free(working_dir);
+	// destroy_map(&country_map);
+	// destroy_map(&citizen_map);
+	// destroy_map(&virus_map);
 	// printf("Exiting...\n");
 	return 0;
+}
+
+void closingHandler(int signum){
+  // Create log file of current process 
+	pid_t mypid = getpid();
+  char *logFileName = malloc(20*sizeof(char));
+  sprintf(logFileName, "log_file.%d", mypid);
+	FILE *logfile = fopen(logFileName, "w");
+	for(int i = 1; i < countryIndex; i++){
+		fprintf(logfile, "%s\n", countries[i]);
+	}
+  fprintf(logfile, "TOTAL TRAVEL REQUESTS %d\n", totalRequests);
+  fprintf(logfile, "ACCEPTED %d\n", acceptedRequests);
+  fprintf(logfile, "REJECTED %d\n", rejectedRequests);
+	assert(fclose(logfile) == 0);
+	exit(0);
 }
