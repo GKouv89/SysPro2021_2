@@ -74,7 +74,7 @@ int main(int argc, char *argv[]){
 	// the bufferSizeArgument, and the pipes for communication.
 	// readPipe is the pipe from which the parent reads and the monitor writes to.
 	// writePipe is the pipe for the opposite direction of communication.
-  int *children_pids = malloc(numMonitors*sizeof(int));
+  	int *children_pids = malloc(numMonitors*sizeof(int));
 	char *path = "monitorProcess"; 
 	char *readPipe = malloc(11*sizeof(char));
 	char *writePipe = malloc(11*sizeof(char));
@@ -91,8 +91,8 @@ int main(int argc, char *argv[]){
 				return 1;
 			}
 		}else{
-      children_pids[i] = pid;
-    }
+      			children_pids[i-1] = pid;
+    		}
 	}
 	free(readPipe);
 	free(writePipe);
@@ -331,6 +331,7 @@ int main(int argc, char *argv[]){
       printf("Unknown command. Try again.\n");
     }
   }
+	free(command);
 	free(read_bloom_descs);
 	free(virusName);
   free(children_pids);
