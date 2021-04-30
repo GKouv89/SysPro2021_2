@@ -312,7 +312,7 @@ int main(int argc, char *argv[]){
   char request_length;
   char *command_name, *rest;
   char *answer = malloc(4*sizeof(char));
-  char *date = malloc(11*sizeof(char));
+  char *date = malloc(12*sizeof(char));
   char *citizenID = malloc(5*sizeof(char));
   char *countryName = malloc(255*sizeof(char));
   char charsToWrite;
@@ -366,7 +366,7 @@ int main(int argc, char *argv[]){
               if((charactersRead = read(read_file_descs[curr_country->index], pipeReadBuffer, bufferSize)) < 0){
                 continue;
               }else{
-                strcat(request, pipeReadBuffer);
+                strncat(request, pipeReadBuffer, charactersRead);
                 charsCopied += charactersRead;
               }
             }
