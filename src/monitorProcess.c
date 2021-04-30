@@ -172,11 +172,12 @@ int main(int argc, char *argv[]){
 	}
   send_bloomFilters(virus_map, readfd, writefd, bufferSize);
 
-  char commandLength; 
-  char *command = calloc(1024, sizeof(char));
+  char commandLength, charactersCopied, charsToWrite; 
+  char *command = calloc(255, sizeof(char));
   char *command_name, *rest;
   char *citizenID = malloc(5*sizeof(char));
   char *virusName = malloc(50*sizeof(char));
+  char *writePipeBuffer = malloc(bufferSize*sizeof(char));
   Virus *virus;
   listNode *check_for_vacc;
   while(1){
@@ -206,10 +207,31 @@ int main(int argc, char *argv[]){
               virus = (Virus *) find_node(virus_map, virusName);
               if(virus != NULL){
                 check_for_vacc = lookup_in_virus_vaccinated_for_list(virus, atoi(citizenID));
+                memset(command, 0, 255*sizeof(char));
                 if(check_for_vacc != NULL){
-                  printf("VACCINATED ON %s\n", check_for_vacc->vaccinationDate);
+                  sprintf(command, "YES %s", check_for_vacc->vaccinationDate);
                 }else{
-                  printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
+                  sprintf(command, "NO");
+                }
+                commandLength = strlen(command);
+                if(write(writefd, &commandLength, sizeof(char)) < 0){
+                  perror("write answer length confirmation");
+                }else{
+                  while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
+                  charactersCopied = 0;
+                  while(charactersCopied < commandLength){
+                    if(commandLength - charactersCopied < bufferSize){
+                      charsToWrite = commandLength - charactersCopied;
+                    }else{
+                      charsToWrite = bufferSize;
+                    }
+                    strncpy(writePipeBuffer, command + charactersCopied, charsToWrite*sizeof(char));
+                    if(write(writefd, writePipeBuffer, charsToWrite) < 0){
+                      perror("write answer chunk");
+                    }else{
+                      charactersCopied += charsToWrite;
+                    }
+                  }         
                 }
               }
             }

@@ -311,6 +311,8 @@ int main(int argc, char *argv[]){
   char *request = malloc(255*sizeof(char));
   char request_length;
   char *command_name, *rest;
+  char *answer = malloc(4*sizeof(char));
+  char *date = malloc(11*sizeof(char));
   char *citizenID = malloc(5*sizeof(char));
   char *countryName = malloc(255*sizeof(char));
   char charsToWrite;
@@ -332,7 +334,6 @@ int main(int argc, char *argv[]){
             continue;
           }
           if(lookup_bf_vaccination(curr_set, curr_country->index, citizenID) == 1){
-            // printf("MAYBE\n");
             sprintf(request, "checkSkiplist %s %s", citizenID, virusName);
             request_length = strlen(request);
             if(write(write_file_descs[curr_country->index], &request_length, sizeof(char))  < 0){
@@ -353,8 +354,32 @@ int main(int argc, char *argv[]){
                 charsCopied += charsToWrite;
               }
             }
-            // For now, a confirmation will be sent after the result is printed from the monitor.
-            while(read(read_file_descs[curr_country->index], pipeReadBuffer, sizeof(char)) < 0);
+            // Waiting for length of response.
+            while(read(read_file_descs[curr_country->index], &request_length, sizeof(char)) < 0);
+            if(write(write_file_descs[curr_country->index], "1", sizeof(char)) < 0){
+              perror("write answer length reception confirmation");
+            }
+            // Reading actual request, byte by byte.
+            charsCopied = 0;
+            memset(request, 0, 255*sizeof(char));
+            while(charsCopied < request_length){
+              if((charactersRead = read(read_file_descs[curr_country->index], pipeReadBuffer, bufferSize)) < 0){
+                continue;
+              }else{
+                strcat(request, pipeReadBuffer);
+                charsCopied += charactersRead;
+              }
+            }
+            // Send confirmation of answer reception.
+            if(write(write_file_descs[curr_country->index], "1", sizeof(char)) < 0){
+              perror("write answer reception confirmation");
+            }
+            if(request_length == 2){
+              printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
+            }else{
+              sscanf(request, "%s %s", answer, date);
+              printf("VACCINATED ON %s\n", date);
+            }
           }else{
             printf("REQUESTED REJECTED - YOU ARE NOT VACCINATED\n");
           }
@@ -381,6 +406,8 @@ int main(int argc, char *argv[]){
     }
   }
 	free(command);
+  free(answer);
+  free(date);
   free(request);
 	free(citizenID);
 	free(countryName);
