@@ -20,10 +20,9 @@ int rejectedRequests = 0;
 int totalRequests = 0;
 int countryIndex = 0;
 
-void closingHandler(int);
+// void closingHandler(int);
 
 int main(int argc, char *argv[]){
-  signal(SIGKILL, closingHandler);
 	// Arguments passed through exec:
 	// An ID number: it's the number of the monitor process
 	// from the parent's perspective. Needed so the monitor
@@ -198,18 +197,18 @@ int main(int argc, char *argv[]){
 	return 0;
 }
 
-void closingHandler(int signum){
-  // Create log file of current process 
-	pid_t mypid = getpid();
-  char *logFileName = malloc(20*sizeof(char));
-  sprintf(logFileName, "log_file.%d", mypid);
-	FILE *logfile = fopen(logFileName, "w");
-	for(int i = 1; i < countryIndex; i++){
-		fprintf(logfile, "%s\n", countries[i]);
-	}
-  fprintf(logfile, "TOTAL TRAVEL REQUESTS %d\n", totalRequests);
-  fprintf(logfile, "ACCEPTED %d\n", acceptedRequests);
-  fprintf(logfile, "REJECTED %d\n", rejectedRequests);
-	assert(fclose(logfile) == 0);
-	exit(0);
-}
+// void closingHandler(int signum){
+  // // Create log file of current process 
+	// pid_t mypid = getpid();
+  // char *logFileName = malloc(20*sizeof(char));
+  // sprintf(logFileName, "log_file.%d", mypid);
+	// FILE *logfile = fopen(logFileName, "w");
+	// for(int i = 1; i < countryIndex; i++){
+		// fprintf(logfile, "%s\n", countries[i]);
+	// }
+  // fprintf(logfile, "TOTAL TRAVEL REQUESTS %d\n", totalRequests);
+  // fprintf(logfile, "ACCEPTED %d\n", acceptedRequests);
+  // fprintf(logfile, "REJECTED %d\n", rejectedRequests);
+	// assert(fclose(logfile) == 0);
+	// exit(0);
+// }

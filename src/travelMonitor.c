@@ -313,7 +313,7 @@ int main(int argc, char *argv[]){
   while(1){
     actual_length = getline(&command, &command_length, stdin);
     command_name = strtok_r(command, " ", &rest);
-    if(strcmp(command_name, "/exit") == 0){
+    if(strcmp(command_name, "/exit\n") == 0){
       for(i = 0; i < numMonitors; i++){
         kill(children_pids[i], 9);
       }
@@ -327,6 +327,8 @@ int main(int argc, char *argv[]){
         }
       }
       break;
+    }else{
+      printf("Unknown command. Try again.\n");
     }
   }
 	free(read_bloom_descs);
