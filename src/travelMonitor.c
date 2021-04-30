@@ -308,9 +308,12 @@ int main(int argc, char *argv[]){
   printf("Received data from children processes.\n");
   size_t command_length = 1024, actual_length;
   char *command = malloc(command_length*sizeof(char));
+  char *request = malloc(255*sizeof(char));
+  char request_length;
   char *command_name, *rest;
   char *citizenID = malloc(5*sizeof(char));
   char *countryName = malloc(255*sizeof(char));
+  char charsToWrite;
   Country *curr_country;
   while(1){
     actual_length = getline(&command, &command_length, stdin);
@@ -329,9 +332,31 @@ int main(int argc, char *argv[]){
             continue;
           }
           if(lookup_bf_vaccination(curr_set, curr_country->index, citizenID) == 1){
-            printf("MAYBE\n");
+            // printf("MAYBE\n");
+            sprintf(request, "checkSkiplist %s %s", citizenID, virusName);
+            request_length = strlen(request);
+            if(write(write_file_descs[curr_country->index], &request_length, sizeof(char))  < 0){
+              perror("write checkSkiplist command length");
+            }
+            while(read(read_file_descs[curr_country->index], pipeReadBuffer, sizeof(char)) < 0);
+            charsCopied = 0;
+            while(charsCopied < request_length){
+              if(request_length - charsCopied < bufferSize){
+                charsToWrite = request_length - charsCopied;
+              }else{
+                charsToWrite = bufferSize;
+              }
+              strncpy(pipeWriteBuffer, request + charsCopied, charsToWrite*sizeof(char));
+              if(write(write_file_descs[curr_country->index], pipeWriteBuffer, charsToWrite) < 0){
+                perror("write checkSkiplist command chunk");
+              }else{
+                charsCopied += charsToWrite;
+              }
+            }
+            // For now, a confirmation will be sent after the result is printed from the monitor.
+            while(read(read_file_descs[curr_country->index], pipeReadBuffer, sizeof(char)) < 0);
           }else{
-            printf("NOT VACCINATED\n");
+            printf("REQUESTED REJECTED - YOU ARE NOT VACCINATED\n");
           }
         } 
       }else{
@@ -356,6 +381,7 @@ int main(int argc, char *argv[]){
     }
   }
 	free(command);
+  free(request);
 	free(citizenID);
 	free(countryName);
 	free(read_bloom_descs);

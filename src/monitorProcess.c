@@ -172,7 +172,55 @@ int main(int argc, char *argv[]){
 	}
   send_bloomFilters(virus_map, readfd, writefd, bufferSize);
 
-  while(1);
+  char commandLength; 
+  char *command = calloc(1024, sizeof(char));
+  char *command_name, *rest;
+  char *citizenID = malloc(5*sizeof(char));
+  char *virusName = malloc(50*sizeof(char));
+  Virus *virus;
+  listNode *check_for_vacc;
+  while(1){
+    FD_ZERO(&rd);
+    FD_SET(readfd, &rd);
+    if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1){
+      perror("select child while waiting for command");
+    }else{
+      if(read(readfd, &commandLength, sizeof(char)) < 0){
+        perror("read request length");
+      }else{
+        if(write(writefd, "1", sizeof(char)) < 0){
+          perror("write request length confirmation");
+        }else{
+          charactersParsed = 0;
+          while(charactersParsed < commandLength){
+            if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
+              continue;
+            }else{
+              strncat(command, readPipeBuffer, charactersRead*sizeof(char));
+              charactersParsed += charactersRead;
+            }
+          }
+          command_name = strtok_r(command, " ", &rest);
+          if(strcmp(command_name, "checkSkiplist") == 0){
+            if(sscanf(rest, "%s %s", citizenID, virusName) == 2){
+              virus = (Virus *) find_node(virus_map, virusName);
+              if(virus != NULL){
+                check_for_vacc = lookup_in_virus_vaccinated_for_list(virus, atoi(citizenID));
+                if(check_for_vacc != NULL){
+                  printf("VACCINATED ON %s\n", check_for_vacc->vaccinationDate);
+                }else{
+                  printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
+                }
+              }
+            }
+          }
+          if(write(writefd, "1", sizeof(char)) < 0){
+            perror("write request confirmation");
+          }
+        }
+      }
+    }
+  }
 
 	// Releasing resources...
 	// for(i = 0; i < countriesLength; i++){
