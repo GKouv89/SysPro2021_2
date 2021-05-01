@@ -4,5 +4,5 @@
 void dateValidity(char *, char *);
 int dateFormatValidity(char *);
 int dateComparison(char *, char *);
-
+int dateDiff(char *, char *);
 #endif

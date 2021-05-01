@@ -3,7 +3,7 @@ COMMON = build/hashmap.o build/bucketlist.o build/country.o build/citizen.o  bui
 MONITOROBJ = build/inputParsing.o  
 LINK = -lm
 
-TESTEXECS = testsetofbfs testBloomFilter
+TESTEXECS = testsetofbfs testBloomFilter testDateDiff
 
 all: travelMonitor monitorProcess
 
@@ -18,6 +18,9 @@ monitorProcess: build/monitorProcess.o $(COMMON) $(MONITOROBJ)
 
 testbuild/%.o: test/%.c
 	gcc $(FLAGS) $< -o $@
+
+testDateDiff: testbuild/testDateDiff.o build/dateOps.o
+	gcc -o $@ $^
 
 testsetofbfs: testbuild/testsetofbfs.o $(COMMON) $(MONITOROBJ) 
 	gcc -o $@ $^ $(LINK)

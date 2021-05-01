@@ -111,3 +111,81 @@ int dateComparison(char *date1, char *date2){
   free(tempdate2);
   return 0;
 }
+
+//////////////////////////////////////
+// Returns 0 if it's okay to travel.//
+// 1 if it is will be more  than    //
+// six months by the time of travel.//
+// -1 if travel date is after       //
+// vaccination date.                //
+//////////////////////////////////////
+
+int dateDiff(char *dateOfTravel, char *dateOfVaccination){
+  // Checking to see if perhaps there is a mistake
+  // where the travel date is before the date of vaccination.
+  if(dateComparison(dateOfVaccination, dateOfTravel) == -1){
+    return -1;
+  }
+  char *tempdate1 = malloc(11*sizeof(char));
+  char *tempdate2 = malloc(12*sizeof(char));
+  strcpy(tempdate1, dateOfVaccination);
+  strcpy(tempdate2, dateOfTravel);
+  char *rest1, *rest2;
+  char *day1 = strtok_r(tempdate1, "-", &rest1);
+  char *month1 = strtok_r(NULL, "-", &rest1);
+  char *year1 = strtok_r(NULL, "-", &rest1);
+  char *day2 =  strtok_r(tempdate2, "-", &rest2);
+  char *month2 = strtok_r(NULL, "-", &rest2);
+  char *year2 = strtok_r(NULL, "-", &rest2);
+  char *endptr;
+  long y2, y1, m2, m1, d2, d1;
+  y2 = strtol(year2, &endptr, 10);
+  y1 = strtol(year1, &endptr, 10);
+  m2 = strtol(month2, &endptr, 10);
+  m1 = strtol(month1, &endptr, 10);
+  d2 = strtol(day2, &endptr, 10);
+  d1 = strtol(day1, &endptr, 10);
+  if(y2 - y1 > 1){ // It's more than a year for sure, need another vaccine. 
+    free(tempdate1);
+    free(tempdate2);
+    return 1;
+  }else if(y2 - y1 == 1){ // Different years but could be less than six months
+    if(12 - m1 + m2 > 6){ // More than six months apart.
+      free(tempdate1);
+      free(tempdate2);
+      return 1;
+    }else if(12 - m1 + m2 == 6){ // Checking the days...
+      if(d1 - d2 < 0){
+        return 1;
+      }else{
+        free(tempdate1);
+        free(tempdate2);
+        return 0;
+      }
+    }else{ // A-OK
+      free(tempdate1);
+      free(tempdate2);
+      return 0;
+    }    
+  }else{
+    if(m2 - m1 > 6){ // More than six months apart.
+      free(tempdate1);
+      free(tempdate2);
+      return 1;
+    }else if(m2 - m1 == 6){ // Checking the days...
+      if(d1 - d2 < 0){
+        free(tempdate1);
+        free(tempdate2);
+        return 1;
+      }else{
+        free(tempdate1);
+        free(tempdate2);
+        return 0;
+      }
+    }else{ // A-OK
+      free(tempdate1);
+      free(tempdate2);
+      return 0;
+    }
+  }
+}
