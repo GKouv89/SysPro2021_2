@@ -328,7 +328,7 @@ int main(int argc, char *argv[]){
           printf("Invalid travel date format. Try again.\n");
           continue;
         }
-        travelRequest(setOfBFs_map, country_map, citizenID, dateOfTravel, countryName, virusName, bufferSize, read_file_descs, write_file_descs);
+        travelRequest(setOfBFs_map, country_map, citizenID, dateOfTravel, countryName, virusName, bufferSize, read_file_descs, write_file_descs, &reqs);
       }else{
         printf("Bad arguments to /travelRequest. Try again.\n");
       }
