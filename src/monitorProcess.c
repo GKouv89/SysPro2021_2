@@ -192,6 +192,7 @@ int main(int argc, char *argv[]){
         if(write(writefd, "1", sizeof(char)) < 0){
           perror("write request length confirmation");
         }else{
+          memset(command, 0, 255*sizeof(char));
           charactersParsed = 0;
           while(charactersParsed < commandLength){
             if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
@@ -233,11 +234,12 @@ int main(int argc, char *argv[]){
                     }
                   }         
                 }
+                while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
               }
             }
+          }else{
+            printf("Unknown command in child: %s\n", command_name);
           }
-          // waiting for confirmation of answer reception.
-          while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
         }
       }
     }

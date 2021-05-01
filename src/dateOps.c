@@ -156,6 +156,8 @@ int dateDiff(char *dateOfTravel, char *dateOfVaccination){
       return 1;
     }else if(12 - m1 + m2 == 6){ // Checking the days...
       if(d1 - d2 < 0){
+        free(tempdate1);  
+        free(tempdate2);
         return 1;
       }else{
         free(tempdate1);
