@@ -236,9 +236,8 @@ int main(int argc, char *argv[]){
               }
             }
           }
-          if(write(writefd, "1", sizeof(char)) < 0){
-            perror("write request confirmation");
-          }
+          // waiting for confirmation of answer reception.
+          while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
         }
       }
     }

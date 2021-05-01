@@ -365,11 +365,11 @@ int main(int argc, char *argv[]){
 					if(write(write_file_descs[curr_country->index], "1", sizeof(char)) < 0){
 						perror("write answer length reception confirmation");
 					}
-					// Reading actual request, byte by byte.
+					// Reading actual answer, byte by byte.
 					charsCopied = 0;
 					memset(request, 0, 255*sizeof(char));
 					while(charsCopied < request_length){
-						if((charactersRead = read(read_file_descs[curr_country->index], pipeReadBuffer, bufferSize)) < 0){
+						if((charactersRead  = read(read_file_descs[curr_country->index], pipeReadBuffer, bufferSize)) < 0){
 							continue;
 						}else{
 							strncat(request, pipeReadBuffer, charactersRead);
