@@ -5,15 +5,20 @@
 
 #include "../include/hashmap.h"
 #include "../include/virus.h"
+#include "../include/requests.h"
 
-void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int bufferSize, int readfd, int writefd){
+void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int bufferSize, int readfd, int writefd, requests *reqs){
   Virus *virus = (Virus *) find_node(virus_map, virusName);
   listNode *check_for_vacc = lookup_in_virus_vaccinated_for_list(virus, atoi(citizenID));
   char *answer = malloc(255*sizeof(char));
   if(check_for_vacc != NULL){
     sprintf(answer, "YES %s", check_for_vacc->vaccinationDate);
+    reqs->accepted++;
+    reqs->total++;
   }else{
     sprintf(answer, "NO");
+    reqs->rejected++;
+    reqs->total++;
   }
   char answerLength = strlen(answer);
   char *readPipeBuffer = malloc(bufferSize*sizeof(char));

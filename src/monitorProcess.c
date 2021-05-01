@@ -14,6 +14,7 @@
 #include "../include/hashmap.h"
 #include "../include/skiplist.h"
 #include "../include/monitorProcessCommands.h"
+#include "../include/requests.h"
 
 char **countries;
 int acceptedRequests = 0;
@@ -179,6 +180,7 @@ int main(int argc, char *argv[]){
   char *citizenID = malloc(5*sizeof(char));
   char *virusName = malloc(50*sizeof(char));
   char *writePipeBuffer = malloc(bufferSize*sizeof(char));
+  requests reqs = {0, 0, 0};
   while(1){
     FD_ZERO(&rd);
     FD_SET(readfd, &rd);
@@ -204,7 +206,7 @@ int main(int argc, char *argv[]){
           command_name = strtok_r(command, " ", &rest);
           if(strcmp(command_name, "checkSkiplist") == 0){
             if(sscanf(rest, "%s %s", citizenID, virusName) == 2){
-              checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd);
+              checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd, &reqs);
             }
           }else{
             printf("Unknown command in child: %s\n", command_name);
