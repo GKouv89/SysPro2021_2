@@ -13,6 +13,7 @@
 #include "../include/inputparsing.h"
 #include "../include/hashmap.h"
 #include "../include/skiplist.h"
+#include "../include/monitorProcessCommands.h"
 
 char **countries;
 int acceptedRequests = 0;
@@ -178,8 +179,6 @@ int main(int argc, char *argv[]){
   char *citizenID = malloc(5*sizeof(char));
   char *virusName = malloc(50*sizeof(char));
   char *writePipeBuffer = malloc(bufferSize*sizeof(char));
-  Virus *virus;
-  listNode *check_for_vacc;
   while(1){
     FD_ZERO(&rd);
     FD_SET(readfd, &rd);
@@ -205,37 +204,7 @@ int main(int argc, char *argv[]){
           command_name = strtok_r(command, " ", &rest);
           if(strcmp(command_name, "checkSkiplist") == 0){
             if(sscanf(rest, "%s %s", citizenID, virusName) == 2){
-              virus = (Virus *) find_node(virus_map, virusName);
-              if(virus != NULL){
-                check_for_vacc = lookup_in_virus_vaccinated_for_list(virus, atoi(citizenID));
-                memset(command, 0, 255*sizeof(char));
-                if(check_for_vacc != NULL){
-                  sprintf(command, "YES %s", check_for_vacc->vaccinationDate);
-                }else{
-                  sprintf(command, "NO");
-                }
-                commandLength = strlen(command);
-                if(write(writefd, &commandLength, sizeof(char)) < 0){
-                  perror("write answer length confirmation");
-                }else{
-                  while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
-                  charactersCopied = 0;
-                  while(charactersCopied < commandLength){
-                    if(commandLength - charactersCopied < bufferSize){
-                      charsToWrite = commandLength - charactersCopied;
-                    }else{
-                      charsToWrite = bufferSize;
-                    }
-                    strncpy(writePipeBuffer, command + charactersCopied, charsToWrite*sizeof(char));
-                    if(write(writefd, writePipeBuffer, charsToWrite) < 0){
-                      perror("write answer chunk");
-                    }else{
-                      charactersCopied += charsToWrite;
-                    }
-                  }         
-                }
-                while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
-              }
+              checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd);
             }
           }else{
             printf("Unknown command in child: %s\n", command_name);
