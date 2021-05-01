@@ -1,5 +1,5 @@
 FLAGS = -g -c
-COMMON = build/hashmap.o build/bucketlist.o build/country.o build/citizen.o  build/virus.o build/bloomfilter.o build/setofbfs.o build/skiplist.o build/linkedlist.o build/dateOps.o
+COMMON = build/hashmap.o build/bucketlist.o build/country.o build/citizen.o  build/virus.o build/bloomfilter.o build/setofbfs.o build/skiplist.o build/linkedlist.o build/dateOps.o build/travelMonitorCommands.o
 MONITOROBJ = build/inputParsing.o  
 LINK = -lm
 
