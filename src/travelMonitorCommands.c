@@ -8,8 +8,9 @@
 #include "../include/virus.h"
 #include "../include/country.h"
 #include "../include/dateOps.h"
+#include "../include/requests.h"
 
-void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID, char *dateOfTravel, char *countryName, char *virusName, int bufferSize, int *read_file_descs, int *write_file_descs){
+void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID, char *dateOfTravel, char *countryName, char *virusName, int bufferSize, int *read_file_descs, int *write_file_descs, requests *reqs){
   Country *curr_country;
 	setofbloomfilters *curr_set = (setofbloomfilters *) find_node(setOfBFs_map, virusName);
   if(curr_set == NULL){
@@ -69,6 +70,8 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID,
       }
       if(request_length == 2){
         printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
+        reqs->rejected++;
+        reqs->total++;
       }else{
         char *answer = malloc(4*sizeof(char));
         char *date = malloc(12*sizeof(char));
@@ -77,8 +80,12 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID,
           case -1: printf("ERROR - TRAVEL DATE BEFORE VACCINATION DATE\n");
               break;
           case 0: printf("REQUEST ACCEPTED – HAPPY TRAVELS\n");
+              reqs->accepted++;
+              reqs->total++;
               break;
           case 1: printf("REQUEST REJECTED – YOU WILL NEED ANOTHER VACCINATION BEFORE TRAVEL DATE\n");
+              reqs->rejected++;
+              reqs->total++;
               break;
           default: printf("Invalid return value from date difference function.\n");
               break; 
@@ -90,6 +97,8 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID,
       free(pipeReadBuffer);
       free(pipeWriteBuffer);
     }else{
+      reqs->rejected++;
+      reqs->total++;
       printf("REQUESTED REJECTED - YOU ARE NOT VACCINATED\n");
     }
   } 
