@@ -3,7 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "../include/hashMap.h"
+#include "../include/hashmap.h"
 #include "../include/virus.h"
 
 void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int bufferSize, int readfd, int writefd){

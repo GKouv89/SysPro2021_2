@@ -355,7 +355,7 @@ int main(int argc, char *argv[]){
 	sprintf(logfile, "log_file.%d", mypid);
 	FILE *log = fopen(logfile, "w");
 	assert(log != NULL);
-	printf("TOTAL TRAVEL REQUESTS %d\nACCEPTED %d\nREJECTED %d\n", reqs.total, reqs.accepted, reqs.rejected);
+	fprintf(log, "TOTAL TRAVEL REQUESTS %d\nACCEPTED %d\nREJECTED %d\n", reqs.total, reqs.accepted, reqs.rejected);
 	assert(fclose(log) == 0);
 	free(logfile);
 	free(command);
