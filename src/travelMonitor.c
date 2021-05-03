@@ -365,6 +365,8 @@ int main(int argc, char *argv[]){
       for(i = 0; i < numMonitors; i++){
         kill(children_pids[i], 9);
       }
+      act.sa_handler=SIG_DFL;
+      sigaction(SIGCHLD, &act, NULL);
       // waiting for children to exit...
       // printf("About to wait for my kids...\n");
       for(i = 1; i <= numMonitors; i++){

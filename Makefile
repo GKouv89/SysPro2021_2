@@ -28,6 +28,15 @@ testsetofbfs: testbuild/testsetofbfs.o $(COMMON) $(MONITOROBJ)
 testBloomFilter: testbuild/testBloomFilter.o build/bloomfilter.o
 	gcc -o $@ $<  build/bloomfilter.o -DK=2
 
+run:
+	./travelMonitor -m 3 -b 5 -s 100000 -i unbalanced_load
+
+run_debug:
+	valgrind --trace-children=yes ./travelMonitor -m 3 -b 5 -s 100000 -i unbalanced_load
+
+run_check_leaks:
+	valgrind --trace-children=yes --leak-check=full ./travelMonitor -m 3 -b 5 -s 100000 -i unbalanced_load
+
 clean_all: clean_log clean_tests clean
 
 clean_log:
