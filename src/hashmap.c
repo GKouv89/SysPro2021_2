@@ -86,9 +86,9 @@ void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSi
   free(pipeReadBuffer);
 }
 
-void printSubdirectoryNames(hashMap *map){
+void printSubdirectoryNames(hashMap *map, FILE *fp){
   for(int i = 0; i < map->noOfBuckets; i++){
-    printSubdirNames(map->map[i]->bl);
+    printSubdirNames(map->map[i]->bl, fp);
   }  
 }
 

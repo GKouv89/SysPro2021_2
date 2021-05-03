@@ -315,7 +315,7 @@ int main(int argc, char *argv[]){
 	sprintf(logfile, "log_file.%d", mypid);
 	FILE *log = fopen(logfile, "w");
 	assert(log != NULL);
-	printSubdirectoryNames(country_map);
+	printSubdirectoryNames(country_map, log);
 	fprintf(log, "TOTAL TRAVEL REQUESTS %d\nACCEPTED %d\nREJECTED %d\n", reqs.total, reqs.accepted, reqs.rejected);
 	assert(fclose(log) == 0);
 	free(logfile);

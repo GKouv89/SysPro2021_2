@@ -163,11 +163,11 @@ void sendCountriesToChild(bucketList *bl, int readfd, int writefd, int bufferSiz
   free(countryName);
 }
 
-void printSubdirNames(bucketList *bl){
+void printSubdirNames(bucketList *bl, FILE *fp){
   if(bl->type == Country_List){
     bucketNode *temp = bl->front;
     while(temp){
-      printf("%s\n", ((Country *)temp->content)->name);
+      fprintf(fp, "%s\n", ((Country *)temp->content)->name);
       temp = temp->next;
     }
   }
