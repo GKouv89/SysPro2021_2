@@ -20,7 +20,30 @@
 
 extern int errno;
 
+pid_t childThatExited;
+int childHasExited = 0;
+
+void childExited(){
+	childHasExited = 1;
+	childThatExited = wait(NULL);
+}
+
+// void hasChildExited(){
+// 	if(childHasExited){
+// 		childHasExited = 0;
+// 		// spawn child function, that will replace initialization code.
+// 	}
+// }
+
 int main(int argc, char *argv[]){
+	// Setting everything up for abrupt exit of child through SIGINT/SIGQUIT via terminal, and the parent's
+	// responsibility to spawn another one.
+	static struct sigaction act;
+	act.sa_handler=childExited;
+	sigfillset(&(act.sa_mask));
+	sigaction(SIGCHLD, &act, NULL);
+	requests reqs = {0, 0, 0};
+
 	if(argc != 9){
 		printf("Usage: ./travelMonitor -m numMonitors -b bufferSize -s sizeOfBloom -i input_dir\n");
 		printf("It doesn't matter if the flags are in different order, as long as all are present and the respective argument follows after each flag\n");
@@ -78,7 +101,7 @@ int main(int argc, char *argv[]){
 	// the bufferSizeArgument, and the pipes for communication.
 	// readPipe is the pipe from which the parent reads and the monitor writes to.
 	// writePipe is the pipe for the opposite direction of communication.
-  	int *children_pids = malloc(numMonitors*sizeof(int));
+  	pid_t *children_pids = malloc(numMonitors*sizeof(int));
 	char *path = "monitorProcess"; 
 	char *readPipe = malloc(11*sizeof(char));
 	char *writePipe = malloc(11*sizeof(char));
@@ -109,38 +132,39 @@ int main(int argc, char *argv[]){
 	// the countries each monitor will process.
 	for(i = 1; i <= numMonitors; i++){
 		sprintf(pipe_name, "pipes/%dw", i);
-		write_file_descs[i-1] = open(pipe_name, O_WRONLY);
-		if(write_file_descs[i-1] < 0){
-			perror("open write pipe");
-		}else{
-			if(write(write_file_descs[i-1], &bufferSize, sizeof(int)) < 0){
-				perror("write bufferSize");
-			}else{
-				// Waiting for confirmation from the child for bufferSize
-				while(read(read_file_descs[i-1], pipeReadBuffer, bufferSize) < 0);
-				// Letting child know size of bloomfilters
-				if(write(write_file_descs[i-1], &sizeOfBloom, sizeof(int)) < 0){
-					perror("write sizeOfBloom length");
-				}	
-				// Waiting for confirmation from the child for sizeOfBloom
-				while(read(read_file_descs[i-1], pipeReadBuffer, bufferSize) < 0);
-				// Letting monitors know input_dir's length and then name,
-				// so they have the full path to their subdirectories.
-				countryLength = strlen(input_dir); // Not an actual country yet.
-				if(write(write_file_descs[i-1], &countryLength, sizeof(char)) < 0){
-					perror("write input_dir length");
-				}else{
-					charsCopied = 0;
-					while(charsCopied < countryLength){
-						strncpy(pipeWriteBuffer, input_dir + charsCopied, bufferSize);
-						if(write(write_file_descs[i-1], pipeWriteBuffer, bufferSize) < 0){
-							perror("write input_dir chunk");
-						}
-						charsCopied += bufferSize;
-					}
-				}
-			}
-		}
+		// write_file_descs[i-1] = open(pipe_name, O_WRONLY);
+		// if(write_file_descs[i-1] < 0){
+		// 	perror("open write pipe");
+		// }else{
+		// 	if(write(write_file_descs[i-1], &bufferSize, sizeof(int)) < 0){
+		// 		perror("write bufferSize");
+		// 	}else{
+		// 		// Waiting for confirmation from the child for bufferSize
+		// 		while(read(read_file_descs[i-1], pipeReadBuffer, bufferSize) < 0);
+		// 		// Letting child know size of bloomfilters
+		// 		if(write(write_file_descs[i-1], &sizeOfBloom, sizeof(int)) < 0){
+		// 			perror("write sizeOfBloom length");
+		// 		}	
+		// 		// Waiting for confirmation from the child for sizeOfBloom
+		// 		while(read(read_file_descs[i-1], pipeReadBuffer, bufferSize) < 0);
+		// 		// Letting monitors know input_dir's length and then name,
+		// 		// so they have the full path to their subdirectories.
+		// 		countryLength = strlen(input_dir); // Not an actual country yet.
+		// 		if(write(write_file_descs[i-1], &countryLength, sizeof(char)) < 0){
+		// 			perror("write input_dir length");
+		// 		}else{
+		// 			charsCopied = 0;
+		// 			while(charsCopied < countryLength){
+		// 				strncpy(pipeWriteBuffer, input_dir + charsCopied, bufferSize);
+		// 				if(write(write_file_descs[i-1], pipeWriteBuffer, bufferSize) < 0){
+		// 					perror("write input_dir chunk");
+		// 				}
+		// 				charsCopied += bufferSize;
+		// 			}
+		// 		}
+		// 	}
+		// }
+		write_file_descs[i-1] = passCommandLineArgs(read_file_descs[i-1], pipe_name, bufferSize, sizeOfBloom, input_dir);
 	}
 	struct dirent **alphabeticOrder;
 	int subdirCount;
@@ -310,6 +334,10 @@ int main(int argc, char *argv[]){
 		}
 	}
   printf("Received data from children processes.\n");
+  // Since we assume that SIGINT/SIGQUIT will be sent to a child process after it has been sent the file directories,
+  // and it has processed the bloomfilters, the first of periodic checks for a child that has quit will take place here.
+//   hasChildExited(); 
+  
   size_t command_length = 1024, actual_length;
   char *command = malloc(command_length*sizeof(char));
   char *command_name, *rest;
@@ -318,8 +346,8 @@ int main(int argc, char *argv[]){
   char *countryName = malloc(255*sizeof(char));
   char charsToWrite;
   Country *curr_country;
-  requests reqs = {0, 0, 0};
   while(1){
+	// hasChildExited();
     actual_length = getline(&command, &command_length, stdin);
     command_name = strtok_r(command, " ", &rest);
     if(strcmp(command_name, "/travelRequest") == 0){

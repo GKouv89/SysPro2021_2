@@ -16,15 +16,27 @@
 #include "../include/monitorProcessCommands.h"
 #include "../include/requests.h"
 
-char **countries;
-int acceptedRequests = 0;
-int rejectedRequests = 0;
-int totalRequests = 0;
-int countryIndex = 0;
+int sigToHandle = 0;
 
-// void closingHandler(int);
+void setSigToHandle(){
+	sigToHandle = 1;
+}
+
+void checkForExit(char **countries, char countryIndex, requests *reqs){
+	if(sigToHandle){
+		prematureExit(countries, countryIndex, reqs);
+	}
+}
 
 int main(int argc, char *argv[]){
+	// Setting everything up for abrupt exit of child through SIGINT/SIGQUIT via terminal...
+	static struct sigaction act;
+	act.sa_handler=setSigToHandle;
+	sigfillset(&(act.sa_mask));
+	sigaction(SIGINT, &act, NULL);
+	sigaction(SIGQUIT, &act, NULL);
+	requests reqs = {0, 0, 0};
+
 	// Arguments passed through exec:
 	// An ID number: it's the number of the monitor process
 	// from the parent's perspective. Needed so the monitor
@@ -66,6 +78,8 @@ int main(int argc, char *argv[]){
 	}
 	// About to read country names that this monitor will process
 	// If there are more, we will resize the array.
+	char **countries;
+	int countryIndex = 0;
 	int countriesLength = 10;
 	countries = malloc(countriesLength*sizeof(char *)); // we assume that each monitor will read 10 directories.
 	int i;
@@ -125,6 +139,12 @@ int main(int argc, char *argv[]){
 			}
 		}	
 	}
+	// Making the assumption that the SIGINT/SIGQUIT will be received AFTER the country names have been received,
+	// as they should be included in the log file, this is the first of many periodic checks for a reception of
+	// such a signal.
+	// These checks will take place after the completion of operations; they will not interrupt them
+	checkForExit(countries, countryIndex, &reqs);
+
 	// First, a hashmap for each of the following: virus, country, citizen.
 	// Arguments to inputParsing, the function that will initialize our data structures with the data.
 	// in the input files.
@@ -172,7 +192,8 @@ int main(int argc, char *argv[]){
 		}
 		closedir(work_dir);
 	}
-  send_bloomFilters(virus_map, readfd, writefd, bufferSize);
+  	send_bloomFilters(virus_map, readfd, writefd, bufferSize);
+	checkForExit(countries, countryIndex, &reqs);
 
   char commandLength, charactersCopied, charsToWrite; 
   char *command = calloc(255, sizeof(char));
@@ -180,8 +201,8 @@ int main(int argc, char *argv[]){
   char *citizenID = malloc(5*sizeof(char));
   char *virusName = malloc(50*sizeof(char));
   char *writePipeBuffer = malloc(bufferSize*sizeof(char));
-  requests reqs = {0, 0, 0};
   while(1){
+	checkForExit(countries, countryIndex, &reqs);
     FD_ZERO(&rd);
     FD_SET(readfd, &rd);
     if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1){
@@ -238,19 +259,3 @@ int main(int argc, char *argv[]){
 	// printf("Exiting...\n");
 	return 0;
 }
-
-// void closingHandler(int signum){
-  // // Create log file of current process 
-	// pid_t mypid = getpid();
-  // char *logFileName = malloc(20*sizeof(char));
-  // sprintf(logFileName, "log_file.%d", mypid);
-	// FILE *logfile = fopen(logFileName, "w");
-	// for(int i = 1; i < countryIndex; i++){
-		// fprintf(logfile, "%s\n", countries[i]);
-	// }
-  // fprintf(logfile, "TOTAL TRAVEL REQUESTS %d\n", totalRequests);
-  // fprintf(logfile, "ACCEPTED %d\n", acceptedRequests);
-  // fprintf(logfile, "REJECTED %d\n", rejectedRequests);
-	// assert(fclose(logfile) == 0);
-	// exit(0);
-// }

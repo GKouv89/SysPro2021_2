@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 #include <unistd.h>
 
 #include "../include/hashmap.h"
@@ -45,4 +46,20 @@ void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int buf
   while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
   free(readPipeBuffer);
   free(writePipeBuffer);
+}
+
+void prematureExit(char **countries, char countryIndex, requests *reqs){
+  // Create log file of current process 
+	pid_t mypid = getpid();
+  char *logFileName = malloc(20*sizeof(char));
+  sprintf(logFileName, "log_file.%d", mypid);
+	FILE *logfile = fopen(logFileName, "w");
+	for(int i = 1; i < countryIndex; i++){
+		fprintf(logfile, "%s\n", countries[i]);
+	}
+  fprintf(logfile, "TOTAL TRAVEL REQUESTS %d\n", reqs->total);
+  fprintf(logfile, "ACCEPTED %d\n", reqs->accepted);
+  fprintf(logfile, "REJECTED %d\n", reqs->rejected);
+	assert(fclose(logfile) == 0);
+	exit(0);
 }

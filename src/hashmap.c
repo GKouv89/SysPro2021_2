@@ -60,6 +60,28 @@ void send_bloomFilters(hashMap *map, int readfd, int writefd, int bufferSize){
     free(pipeWriteBuffer);
 }
 
+void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSize, int monitorIndex){
+  for(int i = 0; i < map->noOfBuckets; i++){
+    sendCountriesToChild(map->map[i]->bl, readfd, writefd, bufferSize, monitorIndex);
+  }
+  char *endStr = "END";
+  char charsCopied, endStrLen = 3;
+  char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+  if(write(writefd, &endStrLen, sizeof(char)) < 0){
+    perror("write END length");
+  }else{ 
+    charsCopied = 0;
+    while(charsCopied < endStrLen){
+      strncpy(pipeWriteBuffer, endStr + charsCopied, bufferSize);
+      if(write(writefd, pipeWriteBuffer, bufferSize) < 0){
+        perror("write END chunk");
+      }
+      charsCopied += bufferSize;
+    }
+  }
+  free(pipeWriteBuffer);
+}
+
 /////////////////////////////////////////////////////////////////
 // This function is called only with the viruses hashmap       //
 // for the first argument. Basically searches for each element //

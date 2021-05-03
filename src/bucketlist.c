@@ -117,6 +117,51 @@ void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int buffer
    } 
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////
+// This function is called after one of the children was killed and the parent                //
+// spawns a new child in its place. It is checked which country was processed by the old child//
+// and those are communicate to the new child.                                                //
+////////////////////////////////////////////////////////////////////////////////////////////////
+
+void sendCountriesToChild(bucketList *bl, int readfd, int writefd, int bufferSize, int monitorIndex){
+  char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+  char *pipeReadBuffer = malloc(bufferSize*sizeof(char));  
+  char *countryName = malloc(255*sizeof(char));
+  char countryLength, charsCopied, charsToWrite;
+  if(bl->type == Country_List){
+    bucketNode *temp = bl->front;
+    while(temp){
+      if(((Country *)temp->content)->index == monitorIndex){
+        // First, send virus name length.
+        countryLength = strlen(((Country *)temp->content)->name);
+        if(write(writefd, &countryLength, sizeof(char)) < 0){
+            perror("write country name length");
+        }else{
+          charsCopied = 0;
+          while(charsCopied < countryLength){
+            if(countryLength - charsCopied < bufferSize){
+              charsToWrite = countryLength - charsCopied;
+            }else{
+              charsToWrite = bufferSize;
+            }
+            strncpy(pipeWriteBuffer, ((Country *)temp->content)->name + charsCopied, charsToWrite);
+            if(write(writefd, pipeWriteBuffer, charsToWrite) < 0){
+              perror("write virus name chunk");
+            }
+            charsCopied += charsToWrite;
+          }
+          // Waiting for confirmation that the country name was received in its entirety.
+          while(read(readfd, pipeReadBuffer, bufferSize) < 0);
+        }
+      }
+      temp = temp->next;
+    }
+  }
+  free(pipeWriteBuffer);
+  free(pipeReadBuffer);
+  free(countryName);
+}
+
 
 ///////////////////////////////////////////////////////////////
 // The command that is called when vaccineStatus is called   //
