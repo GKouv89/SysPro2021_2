@@ -163,6 +163,16 @@ void sendCountriesToChild(bucketList *bl, int readfd, int writefd, int bufferSiz
   free(countryName);
 }
 
+void printSubdirNames(bucketList *bl){
+  if(bl->type == Country_List){
+    bucketNode *temp = bl->front;
+    while(temp){
+      printf("%s\n", ((Country *)temp->content)->name);
+      temp = temp->next;
+    }
+  }
+}
+
 
 ///////////////////////////////////////////////////////////////
 // The command that is called when vaccineStatus is called   //

@@ -86,6 +86,12 @@ void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSi
   free(pipeReadBuffer);
 }
 
+void printSubdirectoryNames(hashMap *map){
+  for(int i = 0; i < map->noOfBuckets; i++){
+    printSubdirNames(map->map[i]->bl);
+  }  
+}
+
 /////////////////////////////////////////////////////////////////
 // This function is called only with the viruses hashmap       //
 // for the first argument. Basically searches for each element //
