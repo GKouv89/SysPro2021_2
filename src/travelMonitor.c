@@ -361,6 +361,7 @@ int main(int argc, char *argv[]){
         printf("Bad arguments to /travelRequest. Try again.\n");
       }
     }else if(strcmp(command_name, "/exit\n") == 0){
+		sigaction(SIGCHLD, NULL, &act);
       for(i = 0; i < numMonitors; i++){
         kill(children_pids[i], 9);
       }
