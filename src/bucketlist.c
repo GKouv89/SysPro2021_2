@@ -131,6 +131,9 @@ void sendCountriesToChild(bucketList *bl, int readfd, int writefd, int bufferSiz
   if(bl->type == Country_List){
     bucketNode *temp = bl->front;
     while(temp){
+      // Waiting for confirmation that the country name was received in its entirety.
+      // First confirmation we wait for was for reception of input directory's name.
+      while(read(readfd, pipeReadBuffer, bufferSize) < 0);
       if(((Country *)temp->content)->index == monitorIndex){
         // First, send virus name length.
         countryLength = strlen(((Country *)temp->content)->name);
@@ -150,8 +153,6 @@ void sendCountriesToChild(bucketList *bl, int readfd, int writefd, int bufferSiz
             }
             charsCopied += charsToWrite;
           }
-          // Waiting for confirmation that the country name was received in its entirety.
-          while(read(readfd, pipeReadBuffer, bufferSize) < 0);
         }
       }
       temp = temp->next;

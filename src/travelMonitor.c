@@ -132,38 +132,6 @@ int main(int argc, char *argv[]){
 	// the countries each monitor will process.
 	for(i = 1; i <= numMonitors; i++){
 		sprintf(pipe_name, "pipes/%dw", i);
-		// write_file_descs[i-1] = open(pipe_name, O_WRONLY);
-		// if(write_file_descs[i-1] < 0){
-		// 	perror("open write pipe");
-		// }else{
-		// 	if(write(write_file_descs[i-1], &bufferSize, sizeof(int)) < 0){
-		// 		perror("write bufferSize");
-		// 	}else{
-		// 		// Waiting for confirmation from the child for bufferSize
-		// 		while(read(read_file_descs[i-1], pipeReadBuffer, bufferSize) < 0);
-		// 		// Letting child know size of bloomfilters
-		// 		if(write(write_file_descs[i-1], &sizeOfBloom, sizeof(int)) < 0){
-		// 			perror("write sizeOfBloom length");
-		// 		}	
-		// 		// Waiting for confirmation from the child for sizeOfBloom
-		// 		while(read(read_file_descs[i-1], pipeReadBuffer, bufferSize) < 0);
-		// 		// Letting monitors know input_dir's length and then name,
-		// 		// so they have the full path to their subdirectories.
-		// 		countryLength = strlen(input_dir); // Not an actual country yet.
-		// 		if(write(write_file_descs[i-1], &countryLength, sizeof(char)) < 0){
-		// 			perror("write input_dir length");
-		// 		}else{
-		// 			charsCopied = 0;
-		// 			while(charsCopied < countryLength){
-		// 				strncpy(pipeWriteBuffer, input_dir + charsCopied, bufferSize);
-		// 				if(write(write_file_descs[i-1], pipeWriteBuffer, bufferSize) < 0){
-		// 					perror("write input_dir chunk");
-		// 				}
-		// 				charsCopied += bufferSize;
-		// 			}
-		// 		}
-		// 	}
-		// }
 		write_file_descs[i-1] = passCommandLineArgs(read_file_descs[i-1], pipe_name, bufferSize, sizeOfBloom, input_dir);
 	}
 	struct dirent **alphabeticOrder;
@@ -275,46 +243,8 @@ int main(int argc, char *argv[]){
 					// We will now read from the monitor process no. i
 					// printf("About to receive faux bloom filters from monitor %d\n", k);
 					// Reading...
-					while(1){
-						if(read(read_file_descs[k], &dataLength, sizeof(char)) < 0){
-							// perror("read virus name length");
-							continue;
-						}else{
-							// printf("Virus name length: %d\n", dataLength);
-							charactersParsed = 0;
-							while(charactersParsed < dataLength){
-								if((charactersRead = read(read_file_descs[k], pipeReadBuffer, bufferSize)) < 0){
-									// This means that the monitor isn't done writing the chunk to the pipe,
-									// but it will be ready shortly, so we just move on to the next rep.
-									continue;
-								}else{
-									strncat(virusName, pipeReadBuffer, charactersRead);
-									charactersParsed+=charactersRead;
-								}		
-							}
-							if(strcmp(virusName, "END") == 0){
-								// printf("Done receiving from monitor no %d\n", k);
-								i++;
-								memset(virusName, 0, 255*sizeof(char));
-								break;
-							}else{
-								// printf("Received faux bloom filter for Virus %s from monitor %d\n", virusName, k);
-								curr_set = (setofbloomfilters *) find_node(setOfBFs_map, virusName);
-								if(curr_set == NULL){
-									create_setOfBFs(&curr_set, virusName, numMonitors, sizeOfBloom);
-									add_BFtoSet(curr_set, k);
-									insert(setOfBFs_map, virusName, curr_set);
-								}else{
-									add_BFtoSet(curr_set, k);
-								}
-								if(write(write_file_descs[k], "1", sizeof(char)) < 0){
-									perror("write confirmation after receiving virus name");
-								}
-								read_BF(curr_set, read_file_descs[k], write_file_descs[k], k, bufferSize);
-								memset(virusName, 0, 255*sizeof(char));
-							}
-						}
-					}
+					receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[k], write_file_descs[k], k, bufferSize, numMonitors, sizeOfBloom);
+					i++;
 					// After reading, we must reinitialize the set of file descs
 					// that we expect 'traffic' from.
 					read_bloom_descs[k] = 0;
@@ -361,7 +291,6 @@ int main(int argc, char *argv[]){
         printf("Bad arguments to /travelRequest. Try again.\n");
       }
     }else if(strcmp(command_name, "/exit\n") == 0){
-		sigaction(SIGCHLD, NULL, &act);
       for(i = 0; i < numMonitors; i++){
         kill(children_pids[i], 9);
       }

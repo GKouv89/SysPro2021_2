@@ -58,7 +58,57 @@ int passCommandLineArgs(int readfd, char *writePipe, int bufferSize, int sizeOfB
   return writefd;
 }
 
-void childReplacement(hashMap *country_map, pid_t oldChild, int **children_pids, int *read_file_descs, int **write_file_descs, int numMonitors, int bufferSize, int sizeOfBloom, int monitorIndex, char *input_dir){
+void receiveBloomFiltersFromChild(hashMap *setOfBFs_map, int readfd, int writefd, int index, int bufferSize, int numMonitors, int sizeOfBloom){
+  char dataLength, charactersParsed, charactersRead;
+  char *virusName = malloc(255*sizeof(char));
+  char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
+  char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+  setofbloomfilters *curr_set;
+  while(1){
+    if(read(readfd, &dataLength, sizeof(char)) < 0){
+      // perror("read virus name length");
+      continue;
+    }else{
+      // printf("Virus name length: %d\n", dataLength);
+      charactersParsed = 0;
+      while(charactersParsed < dataLength){
+        if((charactersRead = read(readfd, pipeReadBuffer, bufferSize)) < 0){
+          // This means that the monitor isn't done writing the chunk to the pipe,
+          // but it will be ready shortly, so we just move on to the next rep.
+          continue;
+        }else{
+          strncat(virusName, pipeReadBuffer, charactersRead);
+          charactersParsed+=charactersRead;
+        }		
+      }
+      if(strcmp(virusName, "END") == 0){
+        // printf("Done receiving from monitor no %d\n", k);
+        // memset(virusName, 0, 255*sizeof(char));
+        break;
+      }else{
+        // printf("Received faux bloom filter for Virus %s from monitor %d\n", virusName, k);
+        curr_set = (setofbloomfilters *) find_node(setOfBFs_map, virusName);
+        if(curr_set == NULL){
+          create_setOfBFs(&curr_set, virusName, numMonitors, sizeOfBloom);
+          add_BFtoSet(curr_set, index);
+          insert(setOfBFs_map, virusName, curr_set);
+        }else{
+          add_BFtoSet(curr_set, index);
+        }
+        if(write(writefd, "1", sizeof(char)) < 0){
+          perror("write confirmation after receiving virus name");
+        }
+        read_BF(curr_set, readfd, writefd, index, bufferSize);
+        memset(virusName, 0, 255*sizeof(char));
+      }
+    }
+  }
+  free(virusName);
+  free(pipeReadBuffer);
+  free(pipeWriteBuffer);
+}
+
+void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChild, int **children_pids, int *read_file_descs, int **write_file_descs, int numMonitors, int bufferSize, int sizeOfBloom, char *input_dir){
   /* See which child (count-wise) was the one killed, spawn it and replace its process ID */
   int index = -1;
   int i;
@@ -93,6 +143,11 @@ void childReplacement(hashMap *country_map, pid_t oldChild, int **children_pids,
   /* Search through map to find 
     all countries with index == monitorIndex
     and send country name through readfd and writefd */
+  sendCountryNamesToChild(country_map, read_file_descs[index], (*write_file_descs)[index], bufferSize, index);
+
+  /* Receive bloom filters */
+  receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[index], (*write_file_descs)[index], index, bufferSize, numMonitors, sizeOfBloom);
+
   free(readPipe);
   free(writePipe);
 }

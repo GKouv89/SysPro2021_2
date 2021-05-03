@@ -67,9 +67,12 @@ void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSi
   char *endStr = "END";
   char charsCopied, endStrLen = 3;
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+  char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
   if(write(writefd, &endStrLen, sizeof(char)) < 0){
     perror("write END length");
-  }else{ 
+  }else{
+    // Read confirmation for OK reception of last subdirectory name.
+    while(read(readfd, pipeReadBuffer, bufferSize) < 0);
     charsCopied = 0;
     while(charsCopied < endStrLen){
       strncpy(pipeWriteBuffer, endStr + charsCopied, bufferSize);
@@ -80,6 +83,7 @@ void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSi
     }
   }
   free(pipeWriteBuffer);
+  free(pipeReadBuffer);
 }
 
 /////////////////////////////////////////////////////////////////
