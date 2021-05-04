@@ -60,7 +60,7 @@ int passCommandLineArgs(int readfd, char *writePipe, int bufferSize, int sizeOfB
 
 void receiveBloomFiltersFromChild(hashMap *setOfBFs_map, int readfd, int writefd, int index, int bufferSize, int numMonitors, int sizeOfBloom){
   char dataLength, charactersParsed, charactersRead;
-  char *virusName = malloc(255*sizeof(char));
+  char *virusName = calloc(255, sizeof(char));
   char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
   setofbloomfilters *curr_set;
