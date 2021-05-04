@@ -157,6 +157,7 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
 
   /* Receive bloom filters */
   receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[index], write_file_descs[index], index, bufferSize, numMonitors, sizeOfBloom);
+  printf("Ready to accept commands again.\n");
 
   free(readPipe);
   free(writePipe);

@@ -284,6 +284,7 @@ int main(int argc, char *argv[]){
   Country *curr_country;
   fd_set standin;
   FD_SET(0, &standin);
+  printf("Ready to accept commands.\n");
   while(1){
 	// Checking if the SIGCHLD signal was received during the previous operation with another monitor.
 	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
