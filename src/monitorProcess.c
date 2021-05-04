@@ -111,12 +111,14 @@ int main(int argc, char *argv[]){
 			if(read(readfd, &currCountryLength, sizeof(char)) < 0){
 				perror("country length read");
 			}else{
+				printf("currCountryLength: %d\n", currCountryLength);
 				while(charactersParsed < currCountryLength){
 					if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
 						// This means that the parent isn't done writing the chunk to the pipe,
 						// but it will be ready shortly, so we just move on to the next rep.
 						continue;
 					}else{
+						printf("Country so far: %s\n", countries[countryIndex]);
 						strncat(countries[countryIndex], readPipeBuffer, charactersRead);
 						charactersParsed+=charactersRead;
 					}		

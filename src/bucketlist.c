@@ -147,7 +147,8 @@ void sendCountriesToChild(bucketList *bl, int readfd, int writefd, int bufferSiz
           }else{
             // First, send virus name length.
             countryLength = strlen(((Country *)temp->content)->name);
-            if(write(writefd, &countryLength, sizeof(char)) < 0){
+            printf("countryLength is %d\n", countryLength);
+	    if(write(writefd, &countryLength, sizeof(char)) < 0){
                 perror("write country name length");
             }else{
               charsCopied = 0;
