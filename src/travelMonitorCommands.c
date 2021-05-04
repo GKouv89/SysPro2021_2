@@ -113,6 +113,10 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
     }
   }
   assert(index != -1);
+  /* Close pipes and reopen to see if SIGPIPE will be avoided. */
+  close(read_file_descs[index]);
+  close(write_file_descs[index]);
+
   pid_t pid;
   char *path = "monitorProcess"; 
   char *readPipe = malloc(20*sizeof(char));
@@ -123,14 +127,25 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
   }
   if(pid == 0){
     sprintf(readPipe, "pipes/%dr", index+1);
+    /* Reopen reading pipe. */
+    read_file_descs[index] = open(readPipe, O_RDONLY | O_NONBLOCK);
+    if(read_file_descs[index] < 0){
+      perror("open read pipe");
+    }
     sprintf(writePipe, "pipes/%dw", index+1);
     if(execlp(path, path, readPipe, writePipe, NULL) < 0){
       perror("execlp");
       exit(1);
     }
   }else{
-    (*children_pids)[i] = pid;
+    (*children_pids)[index] = pid;
   }
+
+  write_file_descs[index] = open(writePipe, O_WRONLY);
+  if(write_file_descs[index] < 0){
+    perror("open write pipe");
+  }
+  
   /* Pass arguments (sizeOfBloom, bufferSize) to child  */
   passCommandLineArgs(read_file_descs[index], write_file_descs[index], bufferSize, sizeOfBloom, input_dir);
   
