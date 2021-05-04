@@ -137,6 +137,8 @@ void sendCountriesToChild(bucketList *bl, int readfd, int writefd, int bufferSiz
       // Waiting for confirmation that the country name was received in its entirety.
       // First confirmation we wait for was for reception of input directory's name.
       if(((Country *)temp->content)->index == monitorIndex){
+        FD_ZERO(&rd);
+        FD_SET(readfd, &rd);
         if(select(readfd + 1, &rd, NULL, NULL, NULL) == -1){
           perror("select for child ok confirmation");
         }else{
