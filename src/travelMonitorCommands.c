@@ -141,7 +141,6 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
     (*children_pids)[index] = pid;
   }
   /* Reopening writing pipe */
-  printf("writePipe: %s\n", writePipe);
   write_file_descs[index] = open(writePipe, O_WRONLY);
   if(write_file_descs[index] < 0){
     perror("open write pipe");

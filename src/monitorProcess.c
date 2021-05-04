@@ -121,6 +121,7 @@ int main(int argc, char *argv[]){
 						charactersParsed+=charactersRead;
 					}		
 				}
+                                printf("Country received: %s\n", countries[countryIndex]);
 				if(strcmp(countries[countryIndex], "END") == 0){
 					memset(countries[countryIndex], 0, 3);
 					done = 1;

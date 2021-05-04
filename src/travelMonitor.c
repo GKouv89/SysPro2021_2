@@ -249,6 +249,7 @@ int main(int argc, char *argv[]){
 					// We will now read from the monitor process no. i
 					// printf("About to receive faux bloom filters from monitor %d\n", k);
 					// Reading...
+					printf("Receiving from monitor %d\n", k);
 					receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[k], write_file_descs[k], k, bufferSize, numMonitors, sizeOfBloom);
 					i++;
 					// After reading, we must reinitialize the set of file descs
