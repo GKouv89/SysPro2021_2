@@ -16,6 +16,8 @@
 #include "../include/monitorProcessCommands.h"
 #include "../include/requests.h"
 
+extern int errno;
+
 int sigToHandle = 0;
 
 void setSigToHandle(){
@@ -202,11 +204,14 @@ int main(int argc, char *argv[]){
   char *virusName = malloc(50*sizeof(char));
   char *writePipeBuffer = malloc(bufferSize*sizeof(char));
   while(1){
+	// Checking to see if SIGINT or SIGQUIT was received during the immediate previous operation.
 	checkForExit(countries, countryIndex, &reqs);
     FD_ZERO(&rd);
     FD_SET(readfd, &rd);
-    if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1){
-      perror("select child while waiting for command");
+    if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1 && errno == EINTR){
+		// Checking to see if SIGINT or SIGQUIT was received while waiting for a request.
+		checkForExit(countries, countryIndex, &reqs);
+	//   perror("select child while waiting for command");
     }else{
       if(read(readfd, &commandLength, sizeof(char)) < 0){
         perror("read request length");

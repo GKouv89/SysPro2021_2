@@ -9,7 +9,6 @@
 void create_setOfBFs(setofbloomfilters **set, char *virusName, int arrayCount, int sizeOfBloom){
     (*set) = malloc(sizeof(setofbloomfilters));
     (*set)->capacity = arrayCount;
-    (*set)->length = 0;
     (*set)->sizeOfBloom = sizeOfBloom;
     (*set)->bfs = malloc(arrayCount*sizeof(bloomFilter *));
     for(int i = 0; i < arrayCount; i++){
@@ -30,9 +29,15 @@ void add_BFtoSet(setofbloomfilters *set, int index){
     // when select chooses a child to receive the filter from,
     // the index is the same as the index of the pipe's file descriptor
     // in the read and write file descriptor arrays of the parent.
-    assert(set->bfs[index] == NULL);
+    // assert(set->bfs[index] == NULL);
+    if(set->bfs[index] != NULL){
+        // in this case, the filter is being replaced, either by 
+        // an update in the subdirectories of a child process, or
+        // by the replacement of the child process itself
+        destroy_bloomFilter(&(set->bfs[index]));
+        set->bfs[index] = NULL;
+    }
     create_bloomFilter(&(set->bfs[index]), set->sizeOfBloom, 16);
-    (set->length)++;
 }
 
 int lookup_bf_vaccination(setofbloomfilters *set, int index, unsigned char *str){

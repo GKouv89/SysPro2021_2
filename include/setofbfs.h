@@ -10,7 +10,6 @@ typedef struct setofbfs{
     // the virusBF[0] contains the filter for the countries
     // handled by monitorProcess 0, and so forth.
     int capacity;
-    int length;
     int sizeOfBloom;
     bloomFilter **bfs;
 } setofbloomfilters;

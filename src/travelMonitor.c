@@ -28,12 +28,13 @@ void childExited(){
 	childThatExited = wait(NULL);
 }
 
-// void hasChildExited(){
-// 	if(childHasExited){
-// 		childHasExited = 0;
-// 		// spawn child function, that will replace initialization code.
-// 	}
-// }
+void hasChildExited(hashMap *country_map, hashMap *setOfBFs_map, int **children_pids, int *read_file_descs, int **write_file_descs, int numMonitors, int bufferSize, int sizeOfBloom, char *input_dir){
+	if(childHasExited){
+		childHasExited = 0;
+		// spawn child function, that will replace initialization code.
+		childReplacement(country_map, setOfBFs_map, childThatExited, children_pids, read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);
+	}
+}
 
 int main(int argc, char *argv[]){
 	// Setting everything up for abrupt exit of child through SIGINT/SIGQUIT via terminal, and the parent's
@@ -266,7 +267,7 @@ int main(int argc, char *argv[]){
   printf("Received data from children processes.\n");
   // Since we assume that SIGINT/SIGQUIT will be sent to a child process after it has been sent the file directories,
   // and it has processed the bloomfilters, the first of periodic checks for a child that has quit will take place here.
-//   hasChildExited(); 
+  hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, &(write_file_descs), numMonitors, bufferSize, sizeOfBloom, input_dir);
   
   size_t command_length = 1024, actual_length;
   char *command = malloc(command_length*sizeof(char));
@@ -276,39 +277,47 @@ int main(int argc, char *argv[]){
   char *countryName = malloc(255*sizeof(char));
   char charsToWrite;
   Country *curr_country;
+  fd_set standin;
+  FD_SET(0, &standin);
   while(1){
-	// hasChildExited();
-    actual_length = getline(&command, &command_length, stdin);
-    command_name = strtok_r(command, " ", &rest);
-    if(strcmp(command_name, "/travelRequest") == 0){
-      if(sscanf(rest, "%s %s %s %s", citizenID, dateOfTravel, countryName, virusName) == 4){
-        if(dateFormatValidity(dateOfTravel) == -1){
-          printf("Invalid travel date format. Try again.\n");
-          continue;
-        }
-        travelRequest(setOfBFs_map, country_map, citizenID, dateOfTravel, countryName, virusName, bufferSize, read_file_descs, write_file_descs, &reqs);
-      }else{
-        printf("Bad arguments to /travelRequest. Try again.\n");
-      }
-    }else if(strcmp(command_name, "/exit\n") == 0){
-      for(i = 0; i < numMonitors; i++){
-        kill(children_pids[i], 9);
-      }
-      act.sa_handler=SIG_DFL;
-      sigaction(SIGCHLD, &act, NULL);
-      // waiting for children to exit...
-      // printf("About to wait for my kids...\n");
-      for(i = 1; i <= numMonitors; i++){
-        printf("Waiting for kid no %d\n", i);
-        if(wait(NULL) == -1){
-          perror("wait");
-          return 1;
-        }
-      }
-      break;
+	// Checking if the SIGCHLD signal was received during the previous operation with another monitor.
+	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, &(write_file_descs), numMonitors, bufferSize, sizeOfBloom, input_dir);    
+	if(select(1, &standin, NULL, NULL, NULL) < 1 && errno == EINTR){
+		// Checking if the SIGCHLD signal was received while waiting for input from keyboard. 
+		hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, &(write_file_descs), numMonitors, bufferSize, sizeOfBloom, input_dir);    
     }else{
-      printf("Unknown command. Try again.\n");
-    }
+		actual_length = getline(&command, &command_length, stdin);
+		command_name = strtok_r(command, " ", &rest);
+		if(strcmp(command_name, "/travelRequest") == 0){
+			if(sscanf(rest, "%s %s %s %s", citizenID, dateOfTravel, countryName, virusName) == 4){
+				if(dateFormatValidity(dateOfTravel) == -1){
+					printf("Invalid travel date format. Try again.\n");
+					continue;
+				}
+				travelRequest(setOfBFs_map, country_map, citizenID, dateOfTravel, countryName, virusName, bufferSize, read_file_descs, write_file_descs, &reqs);
+			}else{
+				printf("Bad arguments to /travelRequest. Try again.\n");
+			}
+		}else if(strcmp(command_name, "/exit\n") == 0){
+			act.sa_handler=SIG_DFL;
+			sigaction(SIGCHLD, &act, NULL);
+			for(i = 0; i < numMonitors; i++){
+				kill(children_pids[i], 9);
+			}
+			// waiting for children to exit...
+			// printf("About to wait for my kids...\n");
+			for(i = 1; i <= numMonitors; i++){
+				printf("Waiting for kid no %d\n", i);
+				if(wait(NULL) == -1){
+				perror("wait");
+				return 1;
+				}
+			}
+			break;
+		}else{
+			printf("Unknown command. Try again.\n");
+		}
+	}
   }
 	pid_t mypid = getpid();
 	char *logfile = malloc(20*sizeof(char));

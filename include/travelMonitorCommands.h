@@ -6,5 +6,5 @@
 void travelRequest(hashMap *, hashMap *, char *, char *, char *, char *, int, int *, int *, requests *);
 int passCommandLineArgs(int, char *, int, int, char *);
 void receiveBloomFiltersFromChild(hashMap *, int, int, int, int, int, int);
-
+void childReplacement(hashMap *, hashMap *, pid_t, int **, int *, int **, int, int, int, char *);
 #endif
