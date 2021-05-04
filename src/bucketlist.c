@@ -128,30 +128,40 @@ void sendCountriesToChild(bucketList *bl, int readfd, int writefd, int bufferSiz
   char *pipeReadBuffer = malloc(bufferSize*sizeof(char));  
   char *countryName = malloc(255*sizeof(char));
   char countryLength, charsCopied, charsToWrite;
+  fd_set rd;
+  FD_ZERO(&rd);
+  FD_SET(readfd, &rd);
   if(bl->type == Country_List){
     bucketNode *temp = bl->front;
     while(temp){
       // Waiting for confirmation that the country name was received in its entirety.
       // First confirmation we wait for was for reception of input directory's name.
-      while(read(readfd, pipeReadBuffer, bufferSize) < 0);
       if(((Country *)temp->content)->index == monitorIndex){
-        // First, send virus name length.
-        countryLength = strlen(((Country *)temp->content)->name);
-        if(write(writefd, &countryLength, sizeof(char)) < 0){
-            perror("write country name length");
+        if(select(readfd + 1, &rd, NULL, NULL, NULL) == -1){
+          perror("select for child ok confirmation");
         }else{
-          charsCopied = 0;
-          while(charsCopied < countryLength){
-            if(countryLength - charsCopied < bufferSize){
-              charsToWrite = countryLength - charsCopied;
+          if(read(readfd, pipeReadBuffer, bufferSize) < 0){
+            perror("read for child ok confirmation");
+          }else{
+            // First, send virus name length.
+            countryLength = strlen(((Country *)temp->content)->name);
+            if(write(writefd, &countryLength, sizeof(char)) < 0){
+                perror("write country name length");
             }else{
-              charsToWrite = bufferSize;
+              charsCopied = 0;
+              while(charsCopied < countryLength){
+                if(countryLength - charsCopied < bufferSize){
+                  charsToWrite = countryLength - charsCopied;
+                }else{
+                  charsToWrite = bufferSize;
+                }
+                strncpy(pipeWriteBuffer, ((Country *)temp->content)->name + charsCopied, charsToWrite);
+                if(write(writefd, pipeWriteBuffer, charsToWrite) < 0){
+                  perror("write virus name chunk");
+                }
+                charsCopied += charsToWrite;
+              }
             }
-            strncpy(pipeWriteBuffer, ((Country *)temp->content)->name + charsCopied, charsToWrite);
-            if(write(writefd, pipeWriteBuffer, charsToWrite) < 0){
-              perror("write virus name chunk");
-            }
-            charsCopied += charsToWrite;
           }
         }
       }
