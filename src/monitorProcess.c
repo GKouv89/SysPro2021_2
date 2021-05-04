@@ -24,9 +24,9 @@ void setSigToHandle(){
 	sigToHandle = 1;
 }
 
-void checkForExit(char **countries, char countryIndex, requests *reqs){
+void checkForExit(int readfd, int writefd, char **countries, char countryIndex, requests *reqs){
 	if(sigToHandle){
-		prematureExit(countries, countryIndex, reqs);
+		prematureExit(readfd, writefd, countries, countryIndex, reqs);
 	}
 }
 
@@ -145,7 +145,7 @@ int main(int argc, char *argv[]){
 	// as they should be included in the log file, this is the first of many periodic checks for a reception of
 	// such a signal.
 	// These checks will take place after the completion of operations; they will not interrupt them
-	checkForExit(countries, countryIndex, &reqs);
+	checkForExit(readfd, writefd, countries, countryIndex, &reqs);
 
 	// First, a hashmap for each of the following: virus, country, citizen.
 	// Arguments to inputParsing, the function that will initialize our data structures with the data.
@@ -195,7 +195,7 @@ int main(int argc, char *argv[]){
 		closedir(work_dir);
 	}
   	send_bloomFilters(virus_map, readfd, writefd, bufferSize);
-	checkForExit(countries, countryIndex, &reqs);
+	checkForExit(readfd, writefd, countries, countryIndex, &reqs);
 
   char commandLength, charactersCopied, charsToWrite; 
   char *command = calloc(255, sizeof(char));
@@ -205,12 +205,12 @@ int main(int argc, char *argv[]){
   char *writePipeBuffer = malloc(bufferSize*sizeof(char));
   while(1){
 	// Checking to see if SIGINT or SIGQUIT was received during the immediate previous operation.
-	checkForExit(countries, countryIndex, &reqs);
+	checkForExit(readfd, writefd, countries, countryIndex, &reqs);
     FD_ZERO(&rd);
     FD_SET(readfd, &rd);
     if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1 && errno == EINTR){
 		// Checking to see if SIGINT or SIGQUIT was received while waiting for a request.
-		checkForExit(countries, countryIndex, &reqs);
+		checkForExit(readfd, writefd, countries, countryIndex, &reqs);
 	//   perror("select child while waiting for command");
     }else{
       if(read(readfd, &commandLength, sizeof(char)) < 0){
