@@ -13,49 +13,43 @@
 #include "../include/dateOps.h"
 #include "../include/requests.h"
 
-int passCommandLineArgs(int readfd, char *writePipe, int bufferSize, int sizeOfBloom, char *input_dir){
-  int writefd = open(writePipe, O_WRONLY);
+void passCommandLineArgs(int readfd, int writefd, int bufferSize, int sizeOfBloom, char *input_dir){
   char inputDirLength, charsToWrite, charsCopied = 0;
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
   char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
-  if(writefd < 0){
-    perror("open write pipe");
+  if(write(writefd, &bufferSize, sizeof(int)) < 0){
+    perror("write bufferSize");
   }else{
-    if(write(writefd, &bufferSize, sizeof(int)) < 0){
-      perror("write bufferSize");
+    // Waiting for confirmation from the child for bufferSize
+    while(read(readfd, pipeReadBuffer, bufferSize) < 0);
+    // Letting child know size of bloomfilters
+    if(write(writefd, &sizeOfBloom, sizeof(int)) < 0){
+      perror("write sizeOfBloom length");
+    }	
+    // Waiting for confirmation from the child for sizeOfBloom
+    while(read(readfd, pipeReadBuffer, bufferSize) < 0);
+    // Letting monitors know input_dir's length and then name,
+    // so they have the full path to their subdirectories.
+    inputDirLength = strlen(input_dir); // Not an actual country yet.
+    if(write(writefd, &inputDirLength, sizeof(char)) < 0){
+      perror("write input_dir length");
     }else{
-      // Waiting for confirmation from the child for bufferSize
-      while(read(readfd, pipeReadBuffer, bufferSize) < 0);
-      // Letting child know size of bloomfilters
-      if(write(writefd, &sizeOfBloom, sizeof(int)) < 0){
-        perror("write sizeOfBloom length");
-      }	
-      // Waiting for confirmation from the child for sizeOfBloom
-      while(read(readfd, pipeReadBuffer, bufferSize) < 0);
-      // Letting monitors know input_dir's length and then name,
-      // so they have the full path to their subdirectories.
-      inputDirLength = strlen(input_dir); // Not an actual country yet.
-      if(write(writefd, &inputDirLength, sizeof(char)) < 0){
-        perror("write input_dir length");
-      }else{
-        while(charsCopied < inputDirLength){
-          if(inputDirLength - charsCopied < bufferSize){
-            charsToWrite = inputDirLength - charsCopied;
-          }else{
-            charsToWrite = bufferSize;
-          }
-          strncpy(pipeWriteBuffer, input_dir + charsCopied, charsToWrite);
-          if(write(writefd, pipeWriteBuffer, charsToWrite) < 0){
-            perror("write input_dir chunk");
-          }
-          charsCopied += charsToWrite;
+      while(charsCopied < inputDirLength){
+        if(inputDirLength - charsCopied < bufferSize){
+          charsToWrite = inputDirLength - charsCopied;
+        }else{
+          charsToWrite = bufferSize;
         }
+        strncpy(pipeWriteBuffer, input_dir + charsCopied, charsToWrite);
+        if(write(writefd, pipeWriteBuffer, charsToWrite) < 0){
+          perror("write input_dir chunk");
+        }
+        charsCopied += charsToWrite;
       }
     }
   }
   free(pipeWriteBuffer);
   free(pipeReadBuffer);
-  return writefd;
 }
 
 void receiveBloomFiltersFromChild(hashMap *setOfBFs_map, int readfd, int writefd, int index, int bufferSize, int numMonitors, int sizeOfBloom){
@@ -108,7 +102,7 @@ void receiveBloomFiltersFromChild(hashMap *setOfBFs_map, int readfd, int writefd
   free(pipeWriteBuffer);
 }
 
-void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChild, int **children_pids, int *read_file_descs, int **write_file_descs, int numMonitors, int bufferSize, int sizeOfBloom, char *input_dir){
+void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChild, int **children_pids, int *read_file_descs, int *write_file_descs, int numMonitors, int bufferSize, int sizeOfBloom, char *input_dir){
   /* See which child (count-wise) was the one killed, spawn it and replace its process ID */
   int index = -1;
   int i;
@@ -138,15 +132,15 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
     (*children_pids)[i] = pid;
   }
   /* Pass arguments (sizeOfBloom, bufferSize) to child  */
-  (*write_file_descs)[index] = passCommandLineArgs(read_file_descs[index], writePipe, bufferSize, sizeOfBloom, input_dir);
+  passCommandLineArgs(read_file_descs[index], write_file_descs[index], bufferSize, sizeOfBloom, input_dir);
   
   /* Search through map to find 
     all countries with index == monitorIndex
     and send country name through readfd and writefd */
-  sendCountryNamesToChild(country_map, read_file_descs[index], (*write_file_descs)[index], bufferSize, index);
+  sendCountryNamesToChild(country_map, read_file_descs[index], write_file_descs[index], bufferSize, index);
 
   /* Receive bloom filters */
-  receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[index], (*write_file_descs)[index], index, bufferSize, numMonitors, sizeOfBloom);
+  receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[index], write_file_descs[index], index, bufferSize, numMonitors, sizeOfBloom);
 
   free(readPipe);
   free(writePipe);

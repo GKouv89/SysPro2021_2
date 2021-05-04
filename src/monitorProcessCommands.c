@@ -48,7 +48,9 @@ void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int buf
   free(writePipeBuffer);
 }
 
-void prematureExit(char **countries, char countryIndex, requests *reqs){
+void prematureExit(int readfd, int writefd, char **countries, char countryIndex, requests *reqs){
+  close(writefd);
+	close(readfd);
   // Create log file of current process 
 	pid_t mypid = getpid();
   char *logFileName = malloc(20*sizeof(char));

@@ -28,7 +28,7 @@ void childExited(){
 	childThatExited = wait(NULL);
 }
 
-void hasChildExited(hashMap *country_map, hashMap *setOfBFs_map, int **children_pids, int *read_file_descs, int **write_file_descs, int numMonitors, int bufferSize, int sizeOfBloom, char *input_dir){
+void hasChildExited(hashMap *country_map, hashMap *setOfBFs_map, int **children_pids, int *read_file_descs, int *write_file_descs, int numMonitors, int bufferSize, int sizeOfBloom, char *input_dir){
 	if(childHasExited){
 		childHasExited = 0;
 		// spawn child function, that will replace initialization code.
@@ -133,7 +133,12 @@ int main(int argc, char *argv[]){
 	// the countries each monitor will process.
 	for(i = 1; i <= numMonitors; i++){
 		sprintf(pipe_name, "pipes/%dw", i);
-		write_file_descs[i-1] = passCommandLineArgs(read_file_descs[i-1], pipe_name, bufferSize, sizeOfBloom, input_dir);
+		write_file_descs[i-1] = open(pipe_name, O_WRONLY);
+		if(write_file_descs[i-1] < 0){
+			perror("open write pipe");
+		}else{
+			passCommandLineArgs(read_file_descs[i-1], write_file_descs[i-1], bufferSize, sizeOfBloom, input_dir);
+		}
 	}
 	struct dirent **alphabeticOrder;
 	int subdirCount;
@@ -267,7 +272,7 @@ int main(int argc, char *argv[]){
   printf("Received data from children processes.\n");
   // Since we assume that SIGINT/SIGQUIT will be sent to a child process after it has been sent the file directories,
   // and it has processed the bloomfilters, the first of periodic checks for a child that has quit will take place here.
-  hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, &(write_file_descs), numMonitors, bufferSize, sizeOfBloom, input_dir);
+  hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);
   
   size_t command_length = 1024, actual_length;
   char *command = malloc(command_length*sizeof(char));
@@ -281,10 +286,10 @@ int main(int argc, char *argv[]){
   FD_SET(0, &standin);
   while(1){
 	// Checking if the SIGCHLD signal was received during the previous operation with another monitor.
-	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, &(write_file_descs), numMonitors, bufferSize, sizeOfBloom, input_dir);    
+	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
 	if(select(1, &standin, NULL, NULL, NULL) < 1 && errno == EINTR){
 		// Checking if the SIGCHLD signal was received while waiting for input from keyboard. 
-		hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, &(write_file_descs), numMonitors, bufferSize, sizeOfBloom, input_dir);    
+		hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
     }else{
 		actual_length = getline(&command, &command_length, stdin);
 		command_name = strtok_r(command, " ", &rest);
