@@ -249,7 +249,7 @@ int main(int argc, char *argv[]){
 					// We will now read from the monitor process no. i
 					// printf("About to receive faux bloom filters from monitor %d\n", k);
 					// Reading...
-					printf("Receiving from monitor %d\n", k);
+					// printf("Receiving from monitor %d\n", k);
 					receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[k], write_file_descs[k], k, bufferSize, numMonitors, sizeOfBloom);
 					i++;
 					// After reading, we must reinitialize the set of file descs
@@ -270,7 +270,6 @@ int main(int argc, char *argv[]){
 			max++;			
 		}
 	}
-  printf("Received data from children processes.\n");
   // Since we assume that SIGINT/SIGQUIT will be sent to a child process after it has been sent the file directories,
   // and it has processed the bloomfilters, the first of periodic checks for a child that has quit will take place here.
   hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);

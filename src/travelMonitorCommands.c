@@ -121,8 +121,8 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
   char *path = "./monitorProcess"; 
   char *readPipe = malloc(20*sizeof(char));
   char *writePipe = malloc(20*sizeof(char));
-  sprintf(readPipe, "tmp/pipes/%dr", index+1);
-  sprintf(writePipe, "tmp/pipes/%dw", index+1);
+  sprintf(readPipe, "/tmp/%dr", index+1);
+  sprintf(writePipe, "/tmp/%dw", index+1);
   /* Reopen reading pipe. */
   read_file_descs[index] = open(readPipe, O_RDONLY | O_NONBLOCK);
   if(read_file_descs[index] < 0){
@@ -139,6 +139,7 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
     }
   }else{
     (*children_pids)[index] = pid;
+    // printf("New child: %d\n", (*children_pids)[index]);
   }
   /* Reopening writing pipe */
   write_file_descs[index] = open(writePipe, O_WRONLY);
@@ -148,7 +149,9 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
   
   /* Pass arguments (sizeOfBloom, bufferSize) to child  */
   passCommandLineArgs(read_file_descs[index], write_file_descs[index], bufferSize, sizeOfBloom, input_dir);
-  
+  char conf;
+  while(read(read_file_descs[index], &conf, sizeof(char)) < 0);
+
   /* Search through map to find 
     all countries with index == monitorIndex
     and send country name through readfd and writefd */
@@ -156,8 +159,7 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
 
   /* Receive bloom filters */
   receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[index], write_file_descs[index], index, bufferSize, numMonitors, sizeOfBloom);
-  printf("Ready to accept commands again.\n");
-
+  
   free(readPipe);
   free(writePipe);
 }

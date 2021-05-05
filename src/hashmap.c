@@ -61,36 +61,52 @@ void send_bloomFilters(hashMap *map, int readfd, int writefd, int bufferSize){
 }
 
 void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSize, int monitorIndex){
+  char **countries = malloc(250*sizeof(char *));
+  int countryIndex = 0;
   for(int i = 0; i < map->noOfBuckets; i++){
-    sendCountriesToChild(map->map[i]->bl, readfd, writefd, bufferSize, monitorIndex);
+    findCountriesForChild(map->map[i]->bl, &countries, &countryIndex, monitorIndex);
+  }
+  char *pipeReadBuffer = malloc(bufferSize*sizeof(char));  
+  char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+  char countryLength, charsCopied, charsToWrite;
+  for(int i = 0; i < countryIndex; i++){
+    countryLength = strlen(countries[i]);
+    if(write(writefd, &countryLength, sizeof(char)) < 0){
+      perror("write country length to new child");
+    }else{
+      charsCopied = 0;
+      while(charsCopied < countryLength){
+        if(countryLength - charsCopied < bufferSize){
+          charsToWrite = countryLength - charsCopied;
+        }else{
+          charsToWrite = bufferSize;
+        }
+        strncpy(pipeWriteBuffer, countries[i] + charsCopied, charsToWrite*sizeof(char));
+        if(write(writefd, pipeWriteBuffer, charsToWrite) < 0){
+          perror("write country chunk to new child");
+        }
+        charsCopied += charsToWrite;
+      }
+      while(read(readfd, pipeReadBuffer, bufferSize) < 0);
+    }
   }
   char *endStr = "END";
-  char charsCopied, endStrLen = 3;
-  char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-  char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
-
-  fd_set rd;
-  FD_ZERO(&rd);
-  FD_SET(readfd, &rd);
-  if(select(readfd + 1, &rd, NULL, NULL, NULL) == -1){
-    perror("select for child ok confirmation");
+  char endStrLen = 3;
+  if(write(writefd, &endStrLen, sizeof(char)) < 0){
+    perror("write END length");
   }else{
-    // Read confirmation for OK reception of last subdirectory name.
-    if(read(readfd, pipeReadBuffer, bufferSize) < 0){
-      perror("read for child ok confirmation");
-    }else{
-      if(write(writefd, &endStrLen, sizeof(char)) < 0){
-        perror("write END length");
+    charsCopied = 0;
+    while(charsCopied < endStrLen){
+      if(endStrLen - charsCopied < bufferSize){
+        charsToWrite = endStrLen - charsCopied;
       }else{
-        charsCopied = 0;
-        while(charsCopied < endStrLen){
-          strncpy(pipeWriteBuffer, endStr + charsCopied, bufferSize);
-          if(write(writefd, pipeWriteBuffer, bufferSize) < 0){
-            perror("write END chunk");
-          }
-          charsCopied += bufferSize;
-        }
+        charsToWrite = bufferSize;
       }
+      strncpy(pipeWriteBuffer, endStr + charsCopied, charsToWrite*sizeof(char));
+      if(write(writefd, pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
+        perror("write END chunk");
+      }
+      charsCopied += charsToWrite;
     }
   }
   free(pipeWriteBuffer);

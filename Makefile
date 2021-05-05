@@ -37,13 +37,17 @@ run_debug:
 run_check_leaks:
 	valgrind --trace-children=yes --leak-check=full ./travelMonitor -m 3 -b 5 -s 100000 -i unbalanced_load
 
-clean_all: clean_log clean_tests clean
+clean_all: clean_pipes clean_log clean_tests clean
 
 clean_log:
 	rm -f log_file.*
 
 clean_tests:
 	rm -f $(TESTEXECS) testbuild/*
+
+clean_pipes:
+	rm /tmp/*r
+	rm /tmp/*w
 
 clean:
 	rm -f travelMonitor monitorProcess build/*
