@@ -4,5 +4,5 @@
 #include "requests.h"
 
 void checkSkiplist(hashMap *, char *, char *, int, int, int, requests *);
-void prematureExit(int, int, char **, char, requests *);
+void prematureExit(int, int, char **, int, requests *);
 #endif

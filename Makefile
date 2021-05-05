@@ -29,13 +29,13 @@ testBloomFilter: testbuild/testBloomFilter.o build/bloomfilter.o
 	gcc -o $@ $<  build/bloomfilter.o -DK=2
 
 run:
-	./travelMonitor -m 3 -b 5 -s 100000 -i unbalanced_load
+	./travelMonitor -m 10 -b 5 -s 100000 -i test_dir
 
 run_debug:
-	valgrind --trace-children=yes ./travelMonitor -m 3 -b 5 -s 100000 -i unbalanced_load
+	valgrind --trace-children=yes ./travelMonitor -m 10 -b 5 -s 100000 -i test_dir
 
 run_check_leaks:
-	valgrind --trace-children=yes --leak-check=full ./travelMonitor -m 3 -b 5 -s 100000 -i unbalanced_load
+	valgrind --trace-children=yes --leak-check=full ./travelMonitor -m 1 -b 5 -s 100000 -i unbalanced_load
 
 clean_all: clean_pipes clean_log clean_tests clean
 

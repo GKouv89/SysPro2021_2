@@ -24,7 +24,7 @@ void setSigToHandle(){
 	sigToHandle = 1;
 }
 
-void checkForExit(int readfd, int writefd, char **countries, char countryIndex, requests *reqs){
+void checkForExit(int readfd, int writefd, char **countries, int countryIndex, requests *reqs){
 	if(sigToHandle){
 		prematureExit(readfd, writefd, countries, countryIndex, reqs);
 	}
@@ -130,12 +130,12 @@ int main(int argc, char *argv[]){
 				charactersParsed = 0;
 				// If need be, we allocate more space for next country names
 				if(countryIndex == countriesLength){
-					char **temp = realloc(countries, 2*countriesLength);
+					char **temp = realloc(countries, 2*countriesLength*sizeof(char *));
+					assert(temp != NULL);
+					countries = temp;
 					for(i = countriesLength; i < 2*countriesLength; i++){
 						countries[i] = calloc(255, sizeof(char));
 					}
-					assert(temp != NULL);
-					countries = temp;
 					countriesLength *= 2;
 				}
 			}

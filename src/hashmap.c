@@ -111,6 +111,10 @@ void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSi
   }
   free(pipeWriteBuffer);
   free(pipeReadBuffer);
+  for(int i = 0; i < countryIndex; i++){
+    free(countries[i]);
+  }
+  free(countries);
 }
 
 void printSubdirectoryNames(hashMap *map, FILE *fp){

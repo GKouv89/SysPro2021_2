@@ -30,6 +30,8 @@ fi
 exec < $1
 
 declare -a countries
+# In this array, the roundRobin file index is kept for each country
+declare -A roundRobin
 
 while read line
 do
@@ -46,5 +48,19 @@ do
       fileName="$directoryName/${words[3]}-$j.txt"
       touch $fileName
     done
+    roundRobin["${words[3]}"]+=0
   fi
+done
+
+exec < $1
+while read line
+do
+  readarray -d ' ' -t words <<< "$line"
+  fileNum=roundRobin["${words[3]}"]
+  fileNum=$(( $fileNum + 1 ))
+  fileName="$2/${words[3]}/${words[3]}-$fileNum.txt"
+  echo About to print to $fileName
+  echo $line >> "$fileName"
+  roundRobin["${words[3]}"]=$(( roundRobin["${words[3]}"] + 1 ));
+  roundRobin["${words[3]}"]=$(( roundRobin["${words[3]}"] % $3 ))
 done
