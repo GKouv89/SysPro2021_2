@@ -118,11 +118,11 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
   close(write_file_descs[index]);
 
   pid_t pid;
-  char *path = "monitorProcess"; 
+  char *path = "./monitorProcess"; 
   char *readPipe = malloc(20*sizeof(char));
   char *writePipe = malloc(20*sizeof(char));
-  sprintf(readPipe, "pipes/%dr", index+1);
-  sprintf(writePipe, "pipes/%dw", index+1);
+  sprintf(readPipe, "tmp/pipes/%dr", index+1);
+  sprintf(writePipe, "tmp/pipes/%dw", index+1);
   /* Reopen reading pipe. */
   read_file_descs[index] = open(readPipe, O_RDONLY | O_NONBLOCK);
   if(read_file_descs[index] < 0){
@@ -133,7 +133,7 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
     exit(1);
   }
   if(pid == 0){
-    if(execlp(path, path, readPipe, writePipe, NULL) < 0){
+    if(execl(path, path, readPipe, writePipe, NULL) < 0){
       perror("execlp");
       exit(1);
     }

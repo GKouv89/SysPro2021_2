@@ -72,14 +72,14 @@ int main(int argc, char *argv[]){
 				return 1;
 		}    
 	}
-	char *pipe_name = malloc(11*sizeof(char));
+	char *pipe_name = malloc(20*sizeof(char));
 	int *read_file_descs = malloc(numMonitors*sizeof(int));
 	for(i = 1; i <= numMonitors; i++){
 		// Making the pipes 
 		// Then, each child that will be exec'd
 		// will receive the number of the pair of pipes
 		// to open as an argument
-		sprintf(pipe_name, "pipes/%dr", i);
+		sprintf(pipe_name, "/tmp/%dr", i);
 		if(mkfifo(pipe_name, 0666) < 0){
 			fprintf(stderr, "errno: %d\n", errno);
 			perror("mkfifo");
@@ -89,7 +89,7 @@ int main(int argc, char *argv[]){
 		if(read_file_descs[i-1] < 0){
 			perror("open read pipe");
 		}
-		sprintf(pipe_name, "pipes/%dw", i);
+		sprintf(pipe_name, "/tmp/%dw", i);
 		if(mkfifo(pipe_name, 0666) < 0){
 			fprintf(stderr, "errno: %d\n", errno);
 			perror("mkfifo");
@@ -103,18 +103,18 @@ int main(int argc, char *argv[]){
 	// readPipe is the pipe from which the parent reads and the monitor writes to.
 	// writePipe is the pipe for the opposite direction of communication.
   	pid_t *children_pids = malloc(numMonitors*sizeof(int));
-	char *path = "monitorProcess"; 
-	char *readPipe = malloc(11*sizeof(char));
-	char *writePipe = malloc(11*sizeof(char));
+	char *path = "./monitorProcess"; 
+	char *readPipe = malloc(20*sizeof(char));
+	char *writePipe = malloc(20*sizeof(char));
 	for(i = 1; i <= numMonitors; i++){
 		if((pid = fork()) < 0){
 			perror("fork");
 			return 1;
 		}
 		if(pid == 0){
-			sprintf(readPipe, "pipes/%dr", i);
-			sprintf(writePipe, "pipes/%dw", i);
-			if(execlp(path, path, readPipe, writePipe, NULL) < 0){
+			sprintf(readPipe, "/tmp/%dr", i);
+			sprintf(writePipe, "/tmp/%dw", i);
+			if(execl(path, path, readPipe, writePipe, NULL) < 0){
 				perror("execlp");
 				return 1;
 			}
@@ -132,7 +132,7 @@ int main(int argc, char *argv[]){
 	// Opening pipes created from monitors where parent will write
 	// the countries each monitor will process.
 	for(i = 1; i <= numMonitors; i++){
-		sprintf(pipe_name, "pipes/%dw", i);
+		sprintf(pipe_name, "/tmp/%dw", i);
 		write_file_descs[i-1] = open(pipe_name, O_WRONLY);
 		if(write_file_descs[i-1] < 0){
 			perror("open write pipe");
@@ -345,12 +345,12 @@ int main(int argc, char *argv[]){
   	// Closing and deleting all pipes
 	for(i = 1; i <= numMonitors; i++){
 		close(read_file_descs[i-1]);
-		sprintf(pipe_name, "pipes/%dr", i);
+		sprintf(pipe_name, "/tmp/%dr", i);
 		if(unlink(pipe_name) < 0){
 			perror("unlink");
 		}
 		close(write_file_descs[i-1]);
-		sprintf(pipe_name, "pipes/%dw", i);
+		sprintf(pipe_name, "/tmp/%dw", i);
 		if(unlink(pipe_name) < 0){
 			perror("unlink");
 		}
