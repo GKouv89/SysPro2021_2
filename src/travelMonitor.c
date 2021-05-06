@@ -22,6 +22,7 @@ extern int errno;
 
 pid_t childThatExited;
 int childHasExited = 0;
+int receivedInterrupt = 0;
 
 void childExited(){
 	childHasExited = 1;
@@ -36,6 +37,22 @@ void hasChildExited(hashMap *country_map, hashMap *setOfBFs_map, int **children_
 	}
 }
 
+void cleanUp(char **, char **, char **, char **, char **, pid_t **, hashMap **, hashMap **, char **, char **, int **, int **, char **, char **);
+void closePipes(int, int *, int *, char **);
+
+void receiveInterrupt(){
+	receivedInterrupt = 1;
+}
+
+void hasReceivedInterrupt(struct sigaction *act, int numMonitors, pid_t *children_pids, hashMap *country_map, hashMap *setOfBFs_map, requests *reqs, int *read_file_descs, int *write_file_descs, char *pipe_name, char *command, char *dateOfTravel, char *citizenID, char *countryName, char *virusName, char *pipeReadBuffer, char *pipeWriteBuffer, char *input_dir){
+	if(receivedInterrupt){
+		noMoreCommands(act, numMonitors, children_pids, country_map, reqs);
+		closePipes(numMonitors, read_file_descs, write_file_descs, &pipe_name);
+		cleanUp(&command, &dateOfTravel, &citizenID, &countryName, &virusName, &children_pids, &country_map, &setOfBFs_map, &pipeReadBuffer, &pipeWriteBuffer, &read_file_descs, &write_file_descs, &pipe_name, &input_dir);
+		exit(0);
+	}
+}
+
 int main(int argc, char *argv[]){
 	// Setting everything up for abrupt exit of child through SIGINT/SIGQUIT via terminal, and the parent's
 	// responsibility to spawn another one.
@@ -43,6 +60,13 @@ int main(int argc, char *argv[]){
 	act.sa_handler=childExited;
 	sigfillset(&(act.sa_mask));
 	sigaction(SIGCHLD, &act, NULL);
+	
+	static struct sigaction interquit;
+	interquit.sa_handler=receiveInterrupt;
+	sigfillset(&(interquit.sa_mask));
+	sigaction(SIGINT, &interquit, NULL);
+	sigaction(SIGQUIT, &interquit, NULL);
+
 	requests reqs = {0, 0, 0};
 
 	if(argc != 9){
@@ -270,10 +294,11 @@ int main(int argc, char *argv[]){
 			max++;			
 		}
 	}
-  // Since we assume that SIGINT/SIGQUIT will be sent to a child process after it has been sent the file directories,
-  // and it has processed the bloomfilters, the first of periodic checks for a child that has quit will take place here.
-  hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);
-  
+	free(read_bloom_descs);
+	// Since we assume that SIGINT/SIGQUIT will be sent to a child process after it has been sent the file directories,
+	// and it has processed the bloomfilters, the first of periodic checks for a child that has quit will take place here.
+	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);
+
   size_t command_length = 1024, actual_length;
   char *command = malloc(command_length*sizeof(char));
   char *command_name, *rest;
@@ -286,12 +311,15 @@ int main(int argc, char *argv[]){
   FD_SET(0, &standin);
   printf("Ready to accept commands.\n");
   while(1){
+	hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
 	// Checking if the SIGCHLD signal was received during the previous operation with another monitor.
 	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
 	if(select(1, &standin, NULL, NULL, NULL) < 1 && errno == EINTR){
 		// Checking if the SIGCHLD signal was received while waiting for input from keyboard. 
 		hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
-    }else{
+		// or if there was a SIGINT or SIGQUIT received.
+		hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
+	}else{
 		actual_length = getline(&command, &command_length, stdin);
 		command_name = strtok_r(command, " ", &rest);
 		if(strcmp(command_name, "/travelRequest") == 0){
@@ -305,61 +333,45 @@ int main(int argc, char *argv[]){
 				printf("Bad arguments to /travelRequest. Try again.\n");
 			}
 		}else if(strcmp(command_name, "/exit\n") == 0){
-			act.sa_handler=SIG_DFL;
-			sigaction(SIGCHLD, &act, NULL);
-			for(i = 0; i < numMonitors; i++){
-				kill(children_pids[i], 9);
-			}
-			// waiting for children to exit...
-			// printf("About to wait for my kids...\n");
-			for(i = 1; i <= numMonitors; i++){
-				printf("Waiting for kid no %d\n", i);
-				if(wait(NULL) == -1){
-				perror("wait");
-				return 1;
-				}
-			}
+			noMoreCommands(&act, numMonitors, children_pids, country_map, &reqs);
 			break;
 		}else{
 			printf("Unknown command. Try again.\n");
 		}
 	}
   }
-	pid_t mypid = getpid();
-	char *logfile = malloc(20*sizeof(char));
-	sprintf(logfile, "log_file.%d", mypid);
-	FILE *log = fopen(logfile, "w");
-	assert(log != NULL);
-	printSubdirectoryNames(country_map, log);
-	fprintf(log, "TOTAL TRAVEL REQUESTS %d\nACCEPTED %d\nREJECTED %d\n", reqs.total, reqs.accepted, reqs.rejected);
-	assert(fclose(log) == 0);
-	free(logfile);
-	free(command);
-	free(dateOfTravel);
-	free(citizenID);
-	free(countryName);
-	free(read_bloom_descs);
-	free(virusName);
-  	free(children_pids);
-  	// Closing and deleting all pipes
-	for(i = 1; i <= numMonitors; i++){
+	closePipes(numMonitors, read_file_descs, write_file_descs, &pipe_name);
+	cleanUp(&command, &dateOfTravel, &citizenID, &countryName, &virusName, &children_pids, &country_map, &setOfBFs_map, &pipeReadBuffer, &pipeWriteBuffer, &read_file_descs, &write_file_descs, &pipe_name, &input_dir);
+}
+
+void closePipes(int numMonitors, int *read_file_descs, int *write_file_descs, char **pipe_name){
+	for(int i = 1; i <= numMonitors; i++){
 		close(read_file_descs[i-1]);
-		sprintf(pipe_name, "/tmp/%dr", i);
-		if(unlink(pipe_name) < 0){
+		sprintf(*pipe_name, "/tmp/%dr", i);
+		if(unlink(*pipe_name) < 0){
 			perror("unlink");
 		}
 		close(write_file_descs[i-1]);
-		sprintf(pipe_name, "/tmp/%dw", i);
-		if(unlink(pipe_name) < 0){
+		sprintf(*pipe_name, "/tmp/%dw", i);
+		if(unlink(*pipe_name) < 0){
 			perror("unlink");
 		}
-  	}
-	destroy_map(&country_map);
-	destroy_map(&setOfBFs_map);
-	free(pipeWriteBuffer);
-	free(pipeReadBuffer);
-	free(read_file_descs);
-	free(write_file_descs);
-	free(pipe_name);
-	free(input_dir);
+	}
+}
+
+void cleanUp(char **command, char **dateOfTravel, char **citizenID, char **countryName, char **virusName, pid_t **children_pids, hashMap **country_map, hashMap **setOfBFs_map, char **pipeReadBuffer, char **pipeWriteBuffer, int **read_file_descs, int **write_file_descs, char **pipe_name, char **input_dir){
+	free(*command);
+	free(*dateOfTravel);
+	free(*citizenID);
+	free(*countryName);
+	free(*virusName);
+  	free(*children_pids);
+	free(*pipeWriteBuffer);
+	free(*pipeReadBuffer);
+	free(*read_file_descs);
+	free(*write_file_descs);
+	free(*pipe_name);
+	free(*input_dir);
+	destroy_map(country_map);
+	destroy_map(setOfBFs_map);
 }

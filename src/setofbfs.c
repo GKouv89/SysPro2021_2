@@ -59,7 +59,6 @@ void read_BF(setofbloomfilters *set, int readfd, int writefd, int index, int buf
             bytesParsed += bytesRead;
         }
     }
-    printf("BLOOM READ\n");
     pipeWriteBuffer = '1';
     if(write(writefd, &pipeWriteBuffer, sizeof(char)) < 0){
         perror("write bf confirmation\n");

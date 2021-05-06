@@ -5,6 +5,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "../include/hashmap.h"
 #include "../include/setofbfs.h"
@@ -256,4 +259,32 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID,
       printf("REQUESTED REJECTED - YOU ARE NOT VACCINATED\n");
     }
   } 
+}
+
+void noMoreCommands(struct sigaction *act, int numMonitors, pid_t *children_pids, hashMap *country_map, requests *reqs){
+  act->sa_handler=SIG_DFL;
+  sigaction(SIGCHLD, act, NULL);
+  int i;
+  for(i = 0; i < numMonitors; i++){
+    kill(children_pids[i], 9);
+  }
+  // waiting for children to exit...
+  // printf("About to wait for my kids...\n");
+  for(i = 1; i <= numMonitors; i++){
+    printf("Waiting for kid no %d\n", i);
+    if(wait(NULL) == -1){
+      perror("wait");
+      exit(1);
+    }
+  }
+  // Making log file.
+  pid_t mypid = getpid();
+	char *logfile = malloc(20*sizeof(char));
+	sprintf(logfile, "log_file.%d", mypid);
+	FILE *log = fopen(logfile, "w");
+	assert(log != NULL);
+	printSubdirectoryNames(country_map, log);
+	fprintf(log, "TOTAL TRAVEL REQUESTS %d\nACCEPTED %d\nREJECTED %d\n", reqs->total, reqs->accepted, reqs->rejected);
+	assert(fclose(log) == 0);
+	free(logfile);
 }

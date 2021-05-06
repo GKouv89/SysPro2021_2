@@ -107,7 +107,6 @@ void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int buffer
               perror("write bf chunk\n");
             }
           }
-          printf("BLOOM COPIED\n");
           while(read(readfd, pipeReadBuffer, bufferSize) < 0);
         }
         temp = temp->next;
