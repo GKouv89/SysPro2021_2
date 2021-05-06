@@ -39,6 +39,9 @@ void newFilesAvailable(hashMap *country_map, hashMap *citizen_map, hashMap *viru
 	if(newFiles){
 		char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
 		char countryLength;
+		if(write(writefd, "1", sizeof(char)) < 0){
+			perror("write confirmation that child is in SIGUSR1 handler");
+		}
 		while(read(readfd, &countryLength, sizeof(char)) < 0);
 		char *countryName = calloc(countryLength + 1, sizeof(char));
 		char charsRead, charsCopied = 0;

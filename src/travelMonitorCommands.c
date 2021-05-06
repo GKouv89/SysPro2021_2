@@ -268,10 +268,12 @@ void addVaccinationRecords(hashMap *country_map, hashMap *setOfBFs_map, char *co
     return;
   }
   int index = country->index;
-  printf("Child %d is in charge of subdirectory: %s\n", index, countryName);
+  // printf("Child %d is in charge of subdirectory: %s\n", index, countryName);
   kill(children_pids[index], 10);
   // Sending directory name through pipe...
   char countryLength = strlen(countryName);
+  char confirmation;
+  while(read(read_file_descs[index], &confirmation, sizeof(char)) < 0);
   if(write(write_file_descs[index], &countryLength, sizeof(char)) < 0){
     perror("write name of directory with new files");
   }else{
