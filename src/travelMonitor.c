@@ -335,6 +335,12 @@ int main(int argc, char *argv[]){
 		}else if(strcmp(command_name, "/exit\n") == 0){
 			noMoreCommands(&act, numMonitors, children_pids, country_map, &reqs);
 			break;
+		}else if(strcmp(command_name, "/addVaccinationRecords") == 0){
+			if(sscanf(rest, "%s", countryName) == 1){
+				addVaccinationRecords(country_map, setOfBFs_map, countryName, children_pids, read_file_descs, write_file_descs, bufferSize, numMonitors, sizeOfBloom);
+			}else{
+				printf("Bad arguments to /addVaccinationRecords. Try again.\n");
+			}
 		}else{
 			printf("Unknown command. Try again.\n");
 		}

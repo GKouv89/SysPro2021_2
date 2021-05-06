@@ -162,7 +162,7 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
 
   /* Receive bloom filters */
   receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[index], write_file_descs[index], index, bufferSize, numMonitors, sizeOfBloom);
-  
+  printf("Ready to accept requests again.\n");
   free(readPipe);
   free(writePipe);
 }
@@ -259,6 +259,42 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID,
       printf("REQUESTED REJECTED - YOU ARE NOT VACCINATED\n");
     }
   } 
+}
+
+void addVaccinationRecords(hashMap *country_map, hashMap *setOfBFs_map, char *countryName, pid_t *children_pids, int *read_file_descs, int *write_file_descs, int bufferSize, int numMonitors, int sizeOfBloom){
+  Country *country = (Country *) find_node(country_map, countryName);
+  if(country == NULL){
+    printf("No such country: %s\n", countryName);
+    return;
+  }
+  int index = country->index;
+  printf("Child %d is in charge of subdirectory: %s\n", index, countryName);
+  kill(children_pids[index], 10);
+  // Sending directory name through pipe...
+  char countryLength = strlen(countryName);
+  if(write(write_file_descs[index], &countryLength, sizeof(char)) < 0){
+    perror("write name of directory with new files");
+  }else{
+    char charsCopied = 0, charsToWrite = 0;
+    char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+    while(charsCopied < countryLength){
+      if(countryLength - charsCopied < bufferSize){
+        charsToWrite = countryLength - charsCopied;
+      }else{
+        charsToWrite = bufferSize;
+      }
+      strncpy(pipeWriteBuffer, countryName + charsCopied, charsToWrite);
+      if(write(write_file_descs[index], pipeWriteBuffer, charsToWrite*sizeof(char)) < 0 ){
+        perror("write chunk of directory with new files");
+      }else{
+        charsCopied += charsToWrite;
+      }
+    }
+    free(pipeWriteBuffer);
+  }
+  // Now waiting to receive updated bloom filters from child.
+  receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[index], write_file_descs[index], index, bufferSize, numMonitors, sizeOfBloom);
+  printf("Bloom filters updated. Ready to accept more requests.\n");
 }
 
 void noMoreCommands(struct sigaction *act, int numMonitors, pid_t *children_pids, hashMap *country_map, requests *reqs){

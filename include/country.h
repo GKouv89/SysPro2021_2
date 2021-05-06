@@ -4,6 +4,7 @@
 typedef struct country{
   char *name;
   int index;
+  int maxFile; // only valid for monitor processes. it is the number of files in the directory that have been read so far.
 } Country;
 
 typedef struct pops{
@@ -43,6 +44,7 @@ struct vaccinationsAgeGroup{
 
 Country* create_country(const char *, int);
 int isEqual_country(Country *, unsigned char *);
+void readCountryFile(Country *);
 void print_vaccination_ratios_byAge(Country *, struct vaccinationsAgeGroup *, struct vaccinationsAgeGroup *);
 void print_vaccination_ratio(Country *, struct vaccinations *, struct vaccinations *);
 void destroy_country(Country **);

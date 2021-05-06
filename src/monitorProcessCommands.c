@@ -56,7 +56,6 @@ void prematureExit(int readfd, int writefd, char **countries, int countryIndex, 
   char *logFileName = malloc(20*sizeof(char));
   sprintf(logFileName, "log_file.%d", mypid);
 	FILE *logfile = fopen(logFileName, "w");
-  fprintf(logfile, "I got %d countries.\n", countryIndex);
 	for(int i = 1; i < countryIndex; i++){
 		fprintf(logfile, "%s\n", countries[i]);
 	}

@@ -9,6 +9,7 @@ Country* create_country(const char *name, int index){
   c->name = malloc((strlen(name) + 1)*sizeof(char));
   strcpy(c->name, name);
   c->index = index;
+  c->maxFile = 0;
   return c;
 }
 
@@ -18,6 +19,10 @@ int isEqual_country(Country *c, unsigned char *str){
   }else{
     return 0;
   }
+}
+
+void readCountryFile(Country *c){
+  c->maxFile++;
 }
 
 void print_vaccination_ratios_byAge(Country *c, struct vaccinationsAgeGroup *vacced, struct vaccinationsAgeGroup *notVacced){

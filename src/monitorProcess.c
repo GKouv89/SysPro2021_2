@@ -19,6 +19,7 @@
 extern int errno;
 
 int sigToHandle = 0;
+int newFiles = 0;
 
 void setSigToHandle(){
 	sigToHandle = 1;
@@ -30,6 +31,47 @@ void checkForExit(int readfd, int writefd, char **countries, int countryIndex, r
 	}
 }
 
+void toReadNewFiles(){
+	newFiles = 1;
+}
+
+void newFilesAvailable(hashMap *country_map, hashMap *citizen_map, hashMap *virus_map, int readfd, int writefd, int bufferSize, int sizeOfBloom, char *input_dir){
+	if(newFiles){
+		char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
+		char countryLength;
+		while(read(readfd, &countryLength, sizeof(char)) < 0);
+		char *countryName = calloc(countryLength + 1, sizeof(char));
+		char charsRead, charsCopied = 0;
+		while(charsCopied < countryLength){
+			while((charsRead = read(readfd, pipeReadBuffer, bufferSize*sizeof(char))) < 0);
+			strncat(countryName, pipeReadBuffer, charsRead*sizeof(char));
+			charsCopied+=charsRead;
+		}
+		char *subdirectory = malloc(255*sizeof(char));
+		sprintf(subdirectory, "%s/%s", input_dir, countryName);
+		Country *country = (Country *) find_node(country_map, countryName);
+		char *fileName = malloc(255*sizeof(char));
+		FILE *fp;
+		while(1){
+			sprintf(fileName, "%s/%s-%d.txt", subdirectory, countryName, country->maxFile + 1);
+			fp = fopen(fileName, "r");
+			if(fp == NULL){
+				// no more files to read
+				break;
+			}
+			inputFileParsing(country_map, citizen_map, virus_map, fp, sizeOfBloom);
+			readCountryFile(country);
+			assert(fclose(fp) == 0);			
+		}
+		send_bloomFilters(virus_map, readfd, writefd, bufferSize);
+		free(subdirectory);
+		free(fileName);
+		free(countryName);
+		free(pipeReadBuffer);
+		newFiles = 0;
+	}
+}
+
 int main(int argc, char *argv[]){
 	// Setting everything up for abrupt exit of child through SIGINT/SIGQUIT via terminal...
 	static struct sigaction act;
@@ -37,6 +79,11 @@ int main(int argc, char *argv[]){
 	sigfillset(&(act.sa_mask));
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGQUIT, &act, NULL);
+
+	static struct sigaction newFilesToRead;
+	newFilesToRead.sa_handler=toReadNewFiles;
+	sigfillset(&(newFilesToRead.sa_mask));
+	sigaction(SIGUSR1, &newFilesToRead, NULL);
 	requests reqs = {0, 0, 0};
 
 	// Arguments passed through exec:
@@ -172,12 +219,15 @@ int main(int argc, char *argv[]){
 	char *working_dir = malloc(512*sizeof(char));
 	struct dirent *curr_subdir;
 	FILE *curr_file;
+	Country *country;
 	for(i = 1; i < countryIndex; i++){
 		strcpy(working_dir, countries[0]);
 		strcat(working_dir, "/");
 		strcat(working_dir, countries[i]);
 		DIR *work_dir = opendir(working_dir);
 		curr_subdir = readdir(work_dir);
+		country = create_country(countries[i], -1);
+		insert(country_map, countries[i], country);
 		while(curr_subdir != NULL){
 			if(strcmp(curr_subdir->d_name, ".") == 0 || strcmp(curr_subdir->d_name, "..") == 0){
 				curr_subdir = readdir(work_dir);
@@ -189,6 +239,7 @@ int main(int argc, char *argv[]){
 			curr_file = fopen(full_file_name, "r");
 			assert(curr_file != NULL);
 			inputFileParsing(country_map, citizen_map, virus_map, curr_file, sizeOfBloom);
+			readCountryFile(country);
 			assert(fclose(curr_file) == 0);			
 			curr_subdir = readdir(work_dir);
 		}
@@ -206,12 +257,17 @@ int main(int argc, char *argv[]){
   while(1){
 	// Checking to see if SIGINT or SIGQUIT was received during the immediate previous operation.
 	checkForExit(readfd, writefd, countries, countryIndex, &reqs);
+	// Checking to see if SIGUSR1 was received during the immediate previous operation.
+	newFilesAvailable(country_map, citizen_map, virus_map, readfd, writefd, bufferSize, sizeOfBloom, countries[0]);
+
     FD_ZERO(&rd);
     FD_SET(readfd, &rd);
     if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1 && errno == EINTR){
 		// Checking to see if SIGINT or SIGQUIT was received while waiting for a request.
 		checkForExit(readfd, writefd, countries, countryIndex, &reqs);
-	//   perror("select child while waiting for command");
+		// perror("select child while waiting for command");
+		// Checking to see if SIGUSR1 was received while waiting for a request.
+		newFilesAvailable(country_map, citizen_map, virus_map, readfd, writefd, bufferSize, sizeOfBloom, countries[0]);
     }else{
       if(read(readfd, &commandLength, sizeof(char)) < 0){
         perror("read request length");
