@@ -359,10 +359,12 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
   }
 
   fd_set rd, rd_specific;
+  int *valid_read_file_descs = malloc(numMonitors*sizeof(int));
   int max = 0;
   FD_ZERO(&rd);
 	for(i = 0; i < numMonitors; i++){
 		FD_SET(read_file_descs[i], &rd);
+    valid_read_file_descs[i] = 1;
     if(read_file_descs[i] > max){
       max = read_file_descs[i];
     }
@@ -374,47 +376,72 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
   char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
   char *ans = malloc(4*sizeof(char));
   char *date = malloc(11*sizeof(char));
-  if(select(max, &rd, NULL, NULL, NULL) == -1){
-    perror("select checkVacc response");
-  }else{
-    for(i = 0; i < numMonitors; i++){
-      if(FD_ISSET(read_file_descs[i], &rd)){
-        while(1){
-          read_content(&virus, &pipeReadBuffer, read_file_descs[i], bufferSize);
-          if(strcmp(virus, "END") == 0){
-            break;
-          }
-          if(write(write_file_descs[i], "1", sizeof(char)) < 0){
-            perror("couldn't confirm reception of virus in searchVaccinationStatus");
-          }else{
-            FD_ZERO(&rd_specific);
-            FD_SET(read_file_descs[i], &rd_specific);
-            if(select(read_file_descs[i] + 1, &rd_specific, NULL, NULL, NULL) == -1){
-              perror("select checkVacc answer reception");
+  int citizenFound = 0;
+  for(i = 0; i < numMonitors; ){
+    if(select(max, &rd, NULL, NULL, NULL) == -1){
+      perror("select checkVacc response");
+    }else{
+      for(int j = 0; j < numMonitors; j++){
+        if(valid_read_file_descs[j] == 1 && FD_ISSET(read_file_descs[j], &rd)){
+          while(1){
+            read_content(&virus, &pipeReadBuffer, read_file_descs[j], bufferSize);
+            if(strcmp(virus, "END") == 0){
+              break;
+            }else if(strcmp(virus, "NO SUCH CITIZEN") == 0){
+              memset(virus, 0, 255*sizeof(char));  
+              break;
+            }
+            citizenFound = 1;
+            if(write(write_file_descs[j], "1", sizeof(char)) < 0){
+              perror("couldn't confirm reception of virus in searchVaccinationStatus");
             }else{
-              read_content(&answer, &pipeReadBuffer, read_file_descs[i], bufferSize);
-              if(strlen(answer) == 2){
-                printf("%s NOT YET VACCINATED\n", virus);
+              // wish to block only to wait trafic from this specific monitor 
+              FD_ZERO(&rd_specific);
+              FD_SET(read_file_descs[j], &rd_specific);
+              if(select(read_file_descs[j] + 1, &rd_specific, NULL, NULL, NULL) == -1){
+                perror("select checkVacc answer reception");
               }else{
-                sscanf(answer, "%s %s", ans, date);
-                printf("%s VACCINATED ON %s\n", virus, date);
-              }
-              memset(virus, 0, 255*sizeof(char));
-              memset(answer, 0, 255*sizeof(char));
-              if(write(write_file_descs[i], "1", sizeof(char)) < 0){
-                perror("couldn't confirm reception of answer in searchVaccinationStatus");
+                read_content(&answer, &pipeReadBuffer, read_file_descs[j], bufferSize);
+                if(strlen(answer) == 2){
+                  printf("%s NOT YET VACCINATED\n", virus);
+                }else{
+                  sscanf(answer, "%s %s", ans, date);
+                  printf("%s VACCINATED ON %s\n", virus, date);
+                }
+                memset(virus, 0, 255*sizeof(char));
+                memset(answer, 0, 255*sizeof(char));
+                if(write(write_file_descs[j], "1", sizeof(char)) < 0){
+                  perror("couldn't confirm reception of answer in searchVaccinationStatus");
+                }
               }
             }
           }
+          valid_read_file_descs[j] = 0;
+          i++;
         }
-        // Response will be received only from one monitor.
-        break;
       }
+      // Response will be received from ALL monitors. At most one will have a valid answer.
+      // In any case, we must reset the set of file_descriptors we expect traffic from.     
+      max=0;
+      FD_ZERO(&rd);
+      for(int k = 0; k < numMonitors; k++){
+        if(valid_read_file_descs[k] == 1){
+          FD_SET(read_file_descs[k], &rd);
+          if(read_file_descs[k] > max){
+            max = read_file_descs[k];
+          }
+        }
+      }
+      max++;
     }
+  }
+  if(citizenFound == 0){
+    printf("No citizen with id %s\n", citizenID);
   }
   free(command);
   free(pipeWriteBuffer);
   free(pipeReadBuffer);
+  free(valid_read_file_descs);
   free(virus);
   free(answer);
   free(ans);

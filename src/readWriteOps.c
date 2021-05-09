@@ -13,7 +13,7 @@ void read_content(char **info_buffer, char **reading_buffer, int readfd, int buf
         if((charsRead = read(readfd, pipeReadBuffer, bufferSize)) < 0){
             continue;
         }else{
-            strncat(*info_buffer, pipeReadBuffer, charsRead);
+            strncpy(*info_buffer + charsCopied, pipeReadBuffer, charsRead);
             charsCopied += charsRead;
         }
     }

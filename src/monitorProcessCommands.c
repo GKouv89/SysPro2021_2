@@ -7,6 +7,7 @@
 #include "../include/hashmap.h"
 #include "../include/virus.h"
 #include "../include/requests.h"
+#include "../include/readWriteOps.h"
 
 void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int bufferSize, int readfd, int writefd, requests *reqs){
   Virus *virus = (Virus *) find_node(virus_map, virusName);
@@ -51,6 +52,10 @@ void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int buf
 void checkVacc(hashMap *citizen_map, hashMap *virus_map, char *citizenID, int readfd, int writefd, int bufferSize){
   Citizen *citizen = (Citizen *) find_node(citizen_map, citizenID);
   if(citizen == NULL){
+    char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+    char *answer = "NO SUCH CITIZEN";
+    write_content(answer, &pipeWriteBuffer, writefd, bufferSize);
+    free(pipeWriteBuffer);
     return;
   }
   lookup_vacStatus_all(virus_map, citizenID, readfd, writefd, bufferSize);
