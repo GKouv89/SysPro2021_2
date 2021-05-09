@@ -128,13 +128,37 @@ void printSubdirectoryNames(hashMap *map, FILE *fp){
 // for the first argument. Basically searches for each element //
 // in each bucket, i.e. each virus, whether the citizen        //
 // has been vaccinated for it and if so, when.                 //
+// For each vaccination (or lack thereof) of the citizen, a    //
+// response is forwarded to the parent.                        //
 /////////////////////////////////////////////////////////////////
 
-// void lookup_vacStatus_all(hashMap *map, unsigned char *citizenID){
-//   for(int i = 0; i < map->noOfBuckets; i++){
-//     vacStatus_all(map->map[i]->bl, citizenID);
-//   }
-// }
+void lookup_vacStatus_all(hashMap *map, unsigned char *citizenID, int readfd, int writefd, int bufferSize){
+  for(int i = 0; i < map->noOfBuckets; i++){
+    vacStatus_all(map->map[i]->bl, citizenID, readfd, writefd, bufferSize);
+  }
+  char *endStr = "END";
+  char endStrLength = 3;
+  if(write(writefd, &endStrLength, sizeof(char)) < 0){
+    perror("write endstring length in checkVacc");
+  }else{
+    char charsWritten = 0, charsToWrite;
+    char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+    while(charsWritten < endStrLength){
+      if(endStrLength - charsWritten < bufferSize){
+        charsToWrite = endStrLength - charsWritten;
+      }else{
+        charsToWrite = bufferSize;
+      }
+      strncpy(pipeWriteBuffer, endStr + charsWritten, charsToWrite);
+      if(write(writefd, pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
+        perror("write endstring chunk in checkVacc");
+      }else{
+        charsWritten += charsToWrite;
+      }      
+    }
+  }
+  printf("SENT ALL VIRUSES\n");
+}
 
 /////////////////////////////////////////////////////////////////
 // This function is called only with the countries hashmap     //

@@ -23,7 +23,7 @@ void* search_bucketList(bucketList *, char *);
 void send_virus_Bloomfilters(bucketList *, int, int, int);
 void findCountriesForChild(bucketList *, char ***, int *, int);
 void printSubdirNames(bucketList *bl, FILE *);
-// void vacStatus_all(bucketList *, unsigned char *);
+void vacStatus_all(bucketList *, unsigned char *, int, int, int);
 // void popStatus_all(bucketList *, int, Virus *, char *, char *);
 void destroy_bucketList(bucketList **);
 

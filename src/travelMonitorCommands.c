@@ -326,3 +326,123 @@ void noMoreCommands(struct sigaction *act, int numMonitors, pid_t *children_pids
 	assert(fclose(log) == 0);
 	free(logfile);
 }
+
+void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int numMonitors, int bufferSize, char *citizenID){
+  char commandLength, charsWritten, charsToWrite; 
+  char *command = malloc(15*sizeof(char));
+  char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+  char confirmation;
+  sprintf(command, "checkVacc %s", citizenID);
+  commandLength = strlen(command);
+  int i;
+  for(i = 0; i < numMonitors; i++){
+    if(write(write_file_descs[i], &commandLength, sizeof(char)) < 0){
+      perror("write checkVacc length");
+    }else{
+      while(read(read_file_descs[i], &confirmation, sizeof(char)) < 0);
+      charsWritten = 0;
+      while(charsWritten < commandLength){
+        if(commandLength - charsWritten < bufferSize){
+          charsToWrite = commandLength - charsWritten;
+        }else{
+          charsToWrite = bufferSize;
+        }
+        strncpy(pipeWriteBuffer, command + charsWritten, charsToWrite);
+        if(write(write_file_descs[i], pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
+          perror("write checkVacc command chunk");
+        }else{
+            charsWritten += charsToWrite;
+        }
+      }
+    }
+  }
+
+  fd_set rd, rd_specific;
+  int max = 0;
+  FD_ZERO(&rd);
+	for(i = 0; i < numMonitors; i++){
+		FD_SET(read_file_descs[i], &rd);
+    if(read_file_descs[i] > max){
+      max = read_file_descs[i];
+    }
+	}
+  max++;
+  char charsCopied, charsRead, virusLength, answerLength;
+  char *virus = calloc(255, sizeof(char));
+  char *answer = calloc(255, sizeof(char));
+  char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
+  char *ans = malloc(4*sizeof(char));
+  char *date = malloc(11*sizeof(char));
+  if(select(max, &rd, NULL, NULL, NULL) == -1){
+    perror("select checkVacc response");
+  }else{
+    for(i = 0; i < numMonitors; i++){
+      if(FD_ISSET(read_file_descs[i], &rd)){
+        while(1){
+          if(read(read_file_descs[i], &virusLength, sizeof(char)) < 0){
+            // perror("couldn't read virus length in searchVaccinationStatus");
+            continue;
+          }else{
+            charsCopied = 0;
+            while(charsCopied < virusLength){
+              if((charsRead = read(read_file_descs[i], pipeReadBuffer, bufferSize)) < 0){
+                // perror("couldn't read virus chunk in searchVaccinationStatus");
+                continue;
+              }else{
+                strncat(virus, pipeReadBuffer, charsRead);
+                charsCopied += charsRead;
+              }
+            }
+            if(strcmp(virus, "END") == 0){
+              break;
+            }
+            if(write(write_file_descs[i], "1", sizeof(char)) < 0){
+              perror("couldn't confirm reception of virus in searchVaccinationStatus");
+            }else{
+              FD_ZERO(&rd_specific);
+              FD_SET(read_file_descs[i], &rd_specific);
+              if(select(read_file_descs[i] + 1, &rd_specific, NULL, NULL, NULL) == -1){
+                perror("select checkVacc answer reception");
+              }else{
+                if(read(read_file_descs[i], &answerLength, sizeof(char)) < 0){
+                  perror("couldn't read answer length in searchVaccinationStatus");
+                }else{
+                  charsCopied = 0;
+                  while(charsCopied < answerLength){
+                    if((charsRead = read(read_file_descs[i], pipeReadBuffer, bufferSize)) < 0){
+                      // perror("couldn't read answer chunk in searchVaccinationStatus");
+                      continue;
+                    }else{
+                      strncat(answer, pipeReadBuffer, charsRead);
+                      charsCopied += charsRead;
+                    }
+                  }
+                  if(answerLength == 2){
+                    printf("%s NOT YET VACCINATED\n", virus);
+                  }else{
+                    sscanf(answer, "%s %s", ans, date);
+                    printf("%s VACCINATED ON %s\n", virus, date);
+                  }
+                  memset(virus, 0, 255*sizeof(char));
+                  memset(answer, 0, 255*sizeof(char));
+                  if(write(write_file_descs[i], "1", sizeof(char)) < 0){
+                    perror("couldn't confirm reception of answer in searchVaccinationStatus");
+                  }
+                }
+              }
+            }
+          }
+        }
+        // Response will be received only from one monitor.
+        break;
+      }
+    }
+  }
+  free(command);
+  free(pipeWriteBuffer);
+  free(pipeReadBuffer);
+  free(virus);
+  free(answer);
+  free(ans);
+  free(date);
+}

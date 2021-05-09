@@ -9,4 +9,5 @@ void passCommandLineArgs(int, int, int, int, char *);
 void receiveBloomFiltersFromChild(hashMap *, int, int, int, int, int, int);
 void childReplacement(hashMap *, hashMap *, pid_t, int **, int *, int *, int, int, int, char *);
 void noMoreCommands(struct sigaction *, int, pid_t *, hashMap *, requests *);
+void searchVaccinationStatus(int *, int *, int , int , char *);
 #endif

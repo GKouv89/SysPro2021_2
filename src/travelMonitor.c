@@ -341,6 +341,12 @@ int main(int argc, char *argv[]){
 			}else{
 				printf("Bad arguments to /addVaccinationRecords. Try again.\n");
 			}
+		}else if(strcmp(command_name, "/searchVaccinationStatus") == 0){
+			if(sscanf(rest, "%s", citizenID) == 1){
+				searchVaccinationStatus(read_file_descs, write_file_descs, numMonitors, bufferSize, citizenID);
+			}else{
+				printf("Bad arguments to /searchVaccinationStatus. Try again.\n");
+			}
 		}else{
 			printf("Unknown command. Try again.\n");
 		}

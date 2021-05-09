@@ -155,23 +155,71 @@ void printSubdirNames(bucketList *bl, FILE *fp){
 // hash bucket, for every node of the list (every virus)     //
 // a search through the skiplist containing the vaccinated   //
 // people for the virus occurs.                              //
+// An appropriate response is forwarded to the parent.       //
 ///////////////////////////////////////////////////////////////
 
-// void vacStatus_all(bucketList *bl, unsigned char *citizenID){
-//   if(bl->type == Virus_List){
-//     bucketNode *temp = bl->front;
-//     listNode *res;
-//     while(temp){
-//       res = lookup_in_virus_vaccinated_for_list((Virus *)temp->content, atoi(citizenID));
-//       if(res == NULL){
-//         printf("%s NO\n", ((Virus *)temp->content)->name);
-//       }else{
-//         printf("%s YES %s\n", ((Virus *)temp->content)->name, res->vaccinationDate);
-//       }
-//       temp = temp->next;
-//     }
-//   }
-// }
+void vacStatus_all(bucketList *bl, unsigned char *citizenID, int readfd, int writefd, int bufferSize){
+  char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+  char *answer = malloc(255*sizeof(char));
+  char virusLength, charsWritten, charsToWrite, confirmation, answerLength;
+  if(bl->type == Virus_List){
+    bucketNode *temp = bl->front;
+    listNode *res;
+    while(temp){
+      res = lookup_in_virus_vaccinated_for_list((Virus *)temp->content, atoi(citizenID));
+      virusLength = strlen(((Virus *) temp->content)->name);
+      if(write(writefd, &virusLength, sizeof(char)) < 0){
+        perror("write virusLength in checkVacc");
+      }else{
+        charsWritten = 0;
+        while(charsWritten < virusLength){
+          if(virusLength - charsWritten < bufferSize){
+            charsToWrite = virusLength - charsWritten;
+          }else{
+            charsToWrite = bufferSize;
+          }
+          strncpy(pipeWriteBuffer, ((Virus *) temp->content)->name + charsWritten, charsToWrite);
+          if(write(writefd, pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
+            perror("write virus name chunk in checkVacc");
+          }else{
+            charsWritten += charsToWrite;
+          }
+        }
+        while(read(readfd, &confirmation, sizeof(char)) < 0);
+        if(res == NULL){
+          sprintf(answer, "NO");
+          // printf("%s NO\n", ((Virus *)temp->content)->name);
+        }else{
+          sprintf(answer, "YES %s", res->vaccinationDate);
+          // printf("%s YES %s\n", ((Virus *)temp->content)->name, res->vaccinationDate);
+        }
+        answerLength = strlen(answer);
+        if(write(writefd, &answerLength, sizeof(char)) < 0){
+          perror("write virusLength in checkVacc");
+        }else{
+          charsWritten = 0;
+          while(charsWritten < answerLength){
+            if(answerLength - charsWritten < bufferSize){
+              charsToWrite = answerLength - charsWritten;
+            }else{
+              charsToWrite = bufferSize;
+            }
+            strncpy(pipeWriteBuffer, answer + charsWritten, charsToWrite);
+            if(write(writefd, pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
+              perror("write answer chunk in checkVacc");
+            }else{
+              charsWritten += charsToWrite;
+            }
+          }
+          while(read(readfd, &confirmation, sizeof(char)) < 0);
+        }
+      }
+      temp = temp->next;
+    }
+  }
+  free(pipeWriteBuffer);
+  free(answer);
+}
 
 //////////////////////////////////////////////////////////////////////////////
 // The command that is called when popStatus or popStatusByAge is called    //

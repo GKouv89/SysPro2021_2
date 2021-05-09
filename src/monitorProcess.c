@@ -293,7 +293,11 @@ int main(int argc, char *argv[]){
             if(sscanf(rest, "%s %s", citizenID, virusName) == 2){
               checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd, &reqs);
             }
-          }else{
+          }else if(strcmp(command_name, "checkVacc") == 0){
+			if(sscanf(rest, "%s", citizenID) == 1){
+				checkVacc(citizen_map, virus_map, citizenID, readfd, writefd, bufferSize);
+			}
+		  }else{
             printf("Unknown command in child: %s\n", command_name);
           }
         }

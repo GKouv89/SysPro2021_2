@@ -48,6 +48,14 @@ void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int buf
   free(writePipeBuffer);
 }
 
+void checkVacc(hashMap *citizen_map, hashMap *virus_map, char *citizenID, int readfd, int writefd, int bufferSize){
+  Citizen *citizen = (Citizen *) find_node(citizen_map, citizenID);
+  if(citizen == NULL){
+    return;
+  }
+  lookup_vacStatus_all(virus_map, citizenID, readfd, writefd, bufferSize);
+}
+
 void prematureExit(int readfd, int writefd, char **countries, int countryIndex, requests *reqs){
   close(writefd);
 	close(readfd);
