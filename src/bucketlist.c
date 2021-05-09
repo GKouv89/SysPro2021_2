@@ -8,6 +8,7 @@
 #include "../include/citizen.h"
 #include "../include/virus.h"
 #include "../include/setofbfs.h"
+#include "../include/readWriteOps.h"
 
 void create_bucketList(bucketList **bl, typeOfList type){
   (*bl) = malloc(sizeof(bucketList));
@@ -167,53 +168,15 @@ void vacStatus_all(bucketList *bl, unsigned char *citizenID, int readfd, int wri
     listNode *res;
     while(temp){
       res = lookup_in_virus_vaccinated_for_list((Virus *)temp->content, atoi(citizenID));
-      virusLength = strlen(((Virus *) temp->content)->name);
-      if(write(writefd, &virusLength, sizeof(char)) < 0){
-        perror("write virusLength in checkVacc");
+      write_content(((Virus *) temp->content)->name, &pipeWriteBuffer, writefd, bufferSize);
+      while(read(readfd, &confirmation, sizeof(char)) < 0);
+      if(res == NULL){
+        sprintf(answer, "NO");
       }else{
-        charsWritten = 0;
-        while(charsWritten < virusLength){
-          if(virusLength - charsWritten < bufferSize){
-            charsToWrite = virusLength - charsWritten;
-          }else{
-            charsToWrite = bufferSize;
-          }
-          strncpy(pipeWriteBuffer, ((Virus *) temp->content)->name + charsWritten, charsToWrite);
-          if(write(writefd, pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
-            perror("write virus name chunk in checkVacc");
-          }else{
-            charsWritten += charsToWrite;
-          }
-        }
-        while(read(readfd, &confirmation, sizeof(char)) < 0);
-        if(res == NULL){
-          sprintf(answer, "NO");
-          // printf("%s NO\n", ((Virus *)temp->content)->name);
-        }else{
-          sprintf(answer, "YES %s", res->vaccinationDate);
-          // printf("%s YES %s\n", ((Virus *)temp->content)->name, res->vaccinationDate);
-        }
-        answerLength = strlen(answer);
-        if(write(writefd, &answerLength, sizeof(char)) < 0){
-          perror("write virusLength in checkVacc");
-        }else{
-          charsWritten = 0;
-          while(charsWritten < answerLength){
-            if(answerLength - charsWritten < bufferSize){
-              charsToWrite = answerLength - charsWritten;
-            }else{
-              charsToWrite = bufferSize;
-            }
-            strncpy(pipeWriteBuffer, answer + charsWritten, charsToWrite);
-            if(write(writefd, pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
-              perror("write answer chunk in checkVacc");
-            }else{
-              charsWritten += charsToWrite;
-            }
-          }
-          while(read(readfd, &confirmation, sizeof(char)) < 0);
-        }
+        sprintf(answer, "YES %s", res->vaccinationDate);
       }
+      write_content(answer, &pipeWriteBuffer, writefd, bufferSize);
+      while(read(readfd, &confirmation, sizeof(char)) < 0);
       temp = temp->next;
     }
   }

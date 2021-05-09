@@ -15,6 +15,7 @@
 #include "../include/country.h"
 #include "../include/dateOps.h"
 #include "../include/requests.h"
+#include "../include/readWriteOps.h"
 
 void passCommandLineArgs(int readfd, int writefd, int bufferSize, int sizeOfBloom, char *input_dir){
   char inputDirLength, charsToWrite, charsCopied = 0;
@@ -379,56 +380,29 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
     for(i = 0; i < numMonitors; i++){
       if(FD_ISSET(read_file_descs[i], &rd)){
         while(1){
-          if(read(read_file_descs[i], &virusLength, sizeof(char)) < 0){
-            // perror("couldn't read virus length in searchVaccinationStatus");
-            continue;
+          read_content(&virus, &pipeReadBuffer, read_file_descs[i], bufferSize);
+          if(strcmp(virus, "END") == 0){
+            break;
+          }
+          if(write(write_file_descs[i], "1", sizeof(char)) < 0){
+            perror("couldn't confirm reception of virus in searchVaccinationStatus");
           }else{
-            charsCopied = 0;
-            while(charsCopied < virusLength){
-              if((charsRead = read(read_file_descs[i], pipeReadBuffer, bufferSize)) < 0){
-                // perror("couldn't read virus chunk in searchVaccinationStatus");
-                continue;
-              }else{
-                strncat(virus, pipeReadBuffer, charsRead);
-                charsCopied += charsRead;
-              }
-            }
-            if(strcmp(virus, "END") == 0){
-              break;
-            }
-            if(write(write_file_descs[i], "1", sizeof(char)) < 0){
-              perror("couldn't confirm reception of virus in searchVaccinationStatus");
+            FD_ZERO(&rd_specific);
+            FD_SET(read_file_descs[i], &rd_specific);
+            if(select(read_file_descs[i] + 1, &rd_specific, NULL, NULL, NULL) == -1){
+              perror("select checkVacc answer reception");
             }else{
-              FD_ZERO(&rd_specific);
-              FD_SET(read_file_descs[i], &rd_specific);
-              if(select(read_file_descs[i] + 1, &rd_specific, NULL, NULL, NULL) == -1){
-                perror("select checkVacc answer reception");
+              read_content(&answer, &pipeReadBuffer, read_file_descs[i], bufferSize);
+              if(strlen(answer) == 2){
+                printf("%s NOT YET VACCINATED\n", virus);
               }else{
-                if(read(read_file_descs[i], &answerLength, sizeof(char)) < 0){
-                  perror("couldn't read answer length in searchVaccinationStatus");
-                }else{
-                  charsCopied = 0;
-                  while(charsCopied < answerLength){
-                    if((charsRead = read(read_file_descs[i], pipeReadBuffer, bufferSize)) < 0){
-                      // perror("couldn't read answer chunk in searchVaccinationStatus");
-                      continue;
-                    }else{
-                      strncat(answer, pipeReadBuffer, charsRead);
-                      charsCopied += charsRead;
-                    }
-                  }
-                  if(answerLength == 2){
-                    printf("%s NOT YET VACCINATED\n", virus);
-                  }else{
-                    sscanf(answer, "%s %s", ans, date);
-                    printf("%s VACCINATED ON %s\n", virus, date);
-                  }
-                  memset(virus, 0, 255*sizeof(char));
-                  memset(answer, 0, 255*sizeof(char));
-                  if(write(write_file_descs[i], "1", sizeof(char)) < 0){
-                    perror("couldn't confirm reception of answer in searchVaccinationStatus");
-                  }
-                }
+                sscanf(answer, "%s %s", ans, date);
+                printf("%s VACCINATED ON %s\n", virus, date);
+              }
+              memset(virus, 0, 255*sizeof(char));
+              memset(answer, 0, 255*sizeof(char));
+              if(write(write_file_descs[i], "1", sizeof(char)) < 0){
+                perror("couldn't confirm reception of answer in searchVaccinationStatus");
               }
             }
           }

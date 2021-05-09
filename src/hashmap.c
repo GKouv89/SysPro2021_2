@@ -5,6 +5,8 @@
 
 #include "../include/hashmap.h"
 #include "../include/bloomfilter.h"
+#include "../include/readWriteOps.h"
+
 
 void create_map(hashMap **map, int noOfBuckets, typeOfList type){
   (*map) = malloc(sizeof(hashMap));
@@ -136,27 +138,10 @@ void lookup_vacStatus_all(hashMap *map, unsigned char *citizenID, int readfd, in
   for(int i = 0; i < map->noOfBuckets; i++){
     vacStatus_all(map->map[i]->bl, citizenID, readfd, writefd, bufferSize);
   }
+  char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
   char *endStr = "END";
-  char endStrLength = 3;
-  if(write(writefd, &endStrLength, sizeof(char)) < 0){
-    perror("write endstring length in checkVacc");
-  }else{
-    char charsWritten = 0, charsToWrite;
-    char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-    while(charsWritten < endStrLength){
-      if(endStrLength - charsWritten < bufferSize){
-        charsToWrite = endStrLength - charsWritten;
-      }else{
-        charsToWrite = bufferSize;
-      }
-      strncpy(pipeWriteBuffer, endStr + charsWritten, charsToWrite);
-      if(write(writefd, pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
-        perror("write endstring chunk in checkVacc");
-      }else{
-        charsWritten += charsToWrite;
-      }      
-    }
-  }
+  write_content(endStr, &pipeWriteBuffer, writefd, bufferSize);
+  free(pipeWriteBuffer);
   printf("SENT ALL VIRUSES\n");
 }
 
