@@ -371,6 +371,7 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
 	}
   max++;
   char charsCopied, charsRead, virusLength, answerLength;
+  char *citizenData = calloc(1024, sizeof(char));
   char *virus = calloc(255, sizeof(char));
   char *answer = calloc(255, sizeof(char));
   char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
@@ -383,35 +384,42 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
     }else{
       for(int j = 0; j < numMonitors; j++){
         if(valid_read_file_descs[j] == 1 && FD_ISSET(read_file_descs[j], &rd)){
-          while(1){
-            read_content(&virus, &pipeReadBuffer, read_file_descs[j], bufferSize);
-            if(strcmp(virus, "END") == 0){
-              break;
-            }else if(strcmp(virus, "NO SUCH CITIZEN") == 0){
-              memset(virus, 0, 255*sizeof(char));  
-              break;
-            }
-            citizenFound = 1;
+          read_content(&citizenData, &pipeReadBuffer, read_file_descs[j], bufferSize);
+          if(strcmp(citizenData, "NO SUCH CITIZEN") == 0){
+            memset(citizenData, 0, 255*sizeof(char));  
+          }else{
+            printf("%s", citizenData);
             if(write(write_file_descs[j], "1", sizeof(char)) < 0){
-              perror("couldn't confirm reception of virus in searchVaccinationStatus");
-            }else{
-              // wish to block only to wait trafic from this specific monitor 
-              FD_ZERO(&rd_specific);
-              FD_SET(read_file_descs[j], &rd_specific);
-              if(select(read_file_descs[j] + 1, &rd_specific, NULL, NULL, NULL) == -1){
-                perror("select checkVacc answer reception");
+              perror("couldn't confirm reception of citizenData in searchVaccinationStatus");
+            }
+            while(1){
+              read_content(&virus, &pipeReadBuffer, read_file_descs[j], bufferSize);
+              if(strcmp(virus, "END") == 0){
+                break;
+              }
+              citizenFound = 1;
+              if(write(write_file_descs[j], "1", sizeof(char)) < 0){
+                perror("couldn't confirm reception of virus in searchVaccinationStatus");
               }else{
-                read_content(&answer, &pipeReadBuffer, read_file_descs[j], bufferSize);
-                if(strlen(answer) == 2){
-                  printf("%s NOT YET VACCINATED\n", virus);
+                // wish to block only to wait trafic from this specific monitor 
+                FD_ZERO(&rd_specific);
+                FD_SET(read_file_descs[j], &rd_specific);
+                if(select(read_file_descs[j] + 1, &rd_specific, NULL, NULL, NULL) == -1){
+                  perror("select checkVacc answer reception");
                 }else{
-                  sscanf(answer, "%s %s", ans, date);
-                  printf("%s VACCINATED ON %s\n", virus, date);
-                }
-                memset(virus, 0, 255*sizeof(char));
-                memset(answer, 0, 255*sizeof(char));
-                if(write(write_file_descs[j], "1", sizeof(char)) < 0){
-                  perror("couldn't confirm reception of answer in searchVaccinationStatus");
+                  read_content(&answer, &pipeReadBuffer, read_file_descs[j], bufferSize);
+                  if(strlen(answer) == 2){
+                    printf("%s NOT YET VACCINATED\n", virus);
+                  }else{
+                    sscanf(answer, "%s %s", ans, date);
+                    printf("%s VACCINATED ON %s\n", virus, date);
+                  }
+                  memset(virus, 0, 255*sizeof(char));
+                  memset(answer, 0, 255*sizeof(char));
+                  memset(citizenData, 0, 1024*sizeof(char));
+                  if(write(write_file_descs[j], "1", sizeof(char)) < 0){
+                    perror("couldn't confirm reception of answer in searchVaccinationStatus");
+                  }
                 }
               }
             }
@@ -438,6 +446,7 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
   if(citizenFound == 0){
     printf("No citizen with id %s\n", citizenID);
   }
+  free(citizenData);
   free(command);
   free(pipeWriteBuffer);
   free(pipeReadBuffer);

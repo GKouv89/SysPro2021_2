@@ -41,8 +41,8 @@ int compare_citizens(Citizen *c1, Citizen *c2){
   return 1;
 }
 
-void print_citizen(Citizen *c){
-  printf("%s %s %s %s %d\n", c->id, c->firstName, c->lastName, c->country->name, c->age);
+void print_citizen(Citizen *c, char **citizen_buffer){
+  sprintf(*citizen_buffer, "%s %s %s %s\nAGE %d\n", c->id, c->firstName, c->lastName, c->country->name, c->age);
 }
 
 void destroy_citizen(Citizen **cit){

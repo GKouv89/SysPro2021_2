@@ -51,14 +51,22 @@ void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int buf
 
 void checkVacc(hashMap *citizen_map, hashMap *virus_map, char *citizenID, int readfd, int writefd, int bufferSize){
   Citizen *citizen = (Citizen *) find_node(citizen_map, citizenID);
+  char *citizenData = calloc(1024, sizeof(char));
+  char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
   if(citizen == NULL){
-    char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-    char *answer = "NO SUCH CITIZEN";
-    write_content(answer, &pipeWriteBuffer, writefd, bufferSize);
+    strcpy(citizenData, "NO SUCH CITIZEN");
+    write_content(citizenData, &pipeWriteBuffer, writefd, bufferSize);
     free(pipeWriteBuffer);
+    free(citizenData);
     return;
   }
+  print_citizen(citizen, &citizenData);
+  write_content(citizenData, &pipeWriteBuffer, writefd, bufferSize);
+  char confirmation;
+  while(read(readfd, &confirmation, sizeof(char)) < 0);
   lookup_vacStatus_all(virus_map, citizenID, readfd, writefd, bufferSize);
+  free(citizenData);
+  free(pipeWriteBuffer);
 }
 
 void prematureExit(int readfd, int writefd, char **countries, int countryIndex, requests *reqs){
