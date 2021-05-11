@@ -275,32 +275,28 @@ int main(int argc, char *argv[]){
       if(read(readfd, &commandLength, sizeof(char)) < 0){
         perror("read request length");
       }else{
-        if(write(writefd, "1", sizeof(char)) < 0){
-          perror("write request length confirmation");
-        }else{
-          memset(command, 0, 255*sizeof(char));
-          charactersParsed = 0;
-          while(charactersParsed < commandLength){
-            if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
-              continue;
-            }else{
-              strncat(command, readPipeBuffer, charactersRead*sizeof(char));
-              charactersParsed += charactersRead;
-            }
-          }
-          command_name = strtok_r(command, " ", &rest);
-          if(strcmp(command_name, "checkSkiplist") == 0){
-            if(sscanf(rest, "%s %s", citizenID, virusName) == 2){
-              checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd, &reqs);
-            }
-          }else if(strcmp(command_name, "checkVacc") == 0){
-			if(sscanf(rest, "%s", citizenID) == 1){
-				checkVacc(citizen_map, virus_map, citizenID, readfd, writefd, bufferSize);
+			memset(command, 0, 255*sizeof(char));
+			charactersParsed = 0;
+			while(charactersParsed < commandLength){
+				if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
+					continue;
+				}else{
+					strncat(command, readPipeBuffer, charactersRead*sizeof(char));
+					charactersParsed += charactersRead;
+				}
 			}
-		  }else{
-            printf("Unknown command in child: %s\n", command_name);
-          }
-        }
+			command_name = strtok_r(command, " ", &rest);
+			if(strcmp(command_name, "checkSkiplist") == 0){
+				if(sscanf(rest, "%s %s", citizenID, virusName) == 2){
+					checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd, &reqs);
+				}
+			}else if(strcmp(command_name, "checkVacc") == 0){
+				if(sscanf(rest, "%s", citizenID) == 1){
+					checkVacc(citizen_map, virus_map, citizenID, readfd, writefd, bufferSize);
+				}
+			}else{
+				printf("Unknown command in child: %s\n", command_name);
+			}
       }
     }
   }

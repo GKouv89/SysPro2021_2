@@ -187,45 +187,14 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID,
       char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
       char request_length, charsCopied, charsToWrite, charactersRead;
       sprintf(request, "checkSkiplist %s %s", citizenID, virusName);
-      request_length = strlen(request);
-      if(write(write_file_descs[curr_country->index], &request_length, sizeof(char))  < 0){
-        perror("write checkSkiplist command length");
-      }
-      while(read(read_file_descs[curr_country->index], pipeReadBuffer, sizeof(char)) < 0);
-      charsCopied = 0;
-      while(charsCopied < request_length){
-        if(request_length - charsCopied < bufferSize){
-          charsToWrite = request_length - charsCopied;
-        }else{
-          charsToWrite = bufferSize;
-        }
-        strncpy(pipeWriteBuffer, request + charsCopied, charsToWrite*sizeof(char));
-        if(write(write_file_descs[curr_country->index], pipeWriteBuffer, charsToWrite) < 0){
-          perror("write checkSkiplist command chunk");
-        }else{
-          charsCopied += charsToWrite;
-        }
-      }
-      // Waiting for length of response.
-      while(read(read_file_descs[curr_country->index], &request_length, sizeof(char)) < 0);
-      if(write(write_file_descs[curr_country->index], "1", sizeof(char)) < 0){
-        perror("write answer length reception confirmation");
-      }
-      // Reading actual answer, byte by byte.
-      charsCopied = 0;
+      write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
       memset(request, 0, 255*sizeof(char));
-      while(charsCopied < request_length){
-        if((charactersRead  = read(read_file_descs[curr_country->index], pipeReadBuffer, bufferSize)) < 0){
-          continue;
-        }else{
-          strncat(request, pipeReadBuffer, charactersRead);
-          charsCopied += charactersRead;
-        }
-      }
+      read_content(&request, &pipeReadBuffer, read_file_descs[curr_country->index], bufferSize);
       // Send confirmation of answer reception.
       if(write(write_file_descs[curr_country->index], "1", sizeof(char)) < 0){
         perror("write answer reception confirmation");
       }
+      request_length = strlen(request);
       if(request_length == 2){
         printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
         reqs->rejected++;
@@ -234,14 +203,23 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID,
         char *answer = malloc(4*sizeof(char));
         char *date = malloc(12*sizeof(char));
         sscanf(request, "%s %s", answer, date);
+        memset(request, 0, 255*sizeof(char));
         switch(dateDiff(dateOfTravel, date)){
           case -1: printf("ERROR - TRAVEL DATE BEFORE VACCINATION DATE\n");
+              strcpy(request, "REJECT");
+              write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
+              reqs->rejected++;
+              reqs->total++;
               break;
           case 0: printf("REQUEST ACCEPTED – HAPPY TRAVELS\n");
+              strcpy(request, "ACCEPT");
+              write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
               reqs->accepted++;
               reqs->total++;
               break;
           case 1: printf("REQUEST REJECTED – YOU WILL NEED ANOTHER VACCINATION BEFORE TRAVEL DATE\n");
+              strcpy(request, "REJECT");
+              write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
               reqs->rejected++;
               reqs->total++;
               break;
@@ -340,7 +318,6 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
     if(write(write_file_descs[i], &commandLength, sizeof(char)) < 0){
       perror("write checkVacc length");
     }else{
-      while(read(read_file_descs[i], &confirmation, sizeof(char)) < 0);
       charsWritten = 0;
       while(charsWritten < commandLength){
         if(commandLength - charsWritten < bufferSize){
