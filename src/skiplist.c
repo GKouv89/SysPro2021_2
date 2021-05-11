@@ -153,13 +153,13 @@ void print_skiplist(skipList *s){
   }
 }
 
-void print_skiplist_citizens(skipList *s){
-  listNode *bottomList = s->levels[0]->front;
-  while(bottomList){
-    print_citizen(bottomList->citizen);
-    bottomList = bottomList->next;
-  }
-}
+// void print_skiplist_citizens(skipList *s){
+//   listNode *bottomList = s->levels[0]->front;
+//   while(bottomList){
+//     print_citizen(bottomList->citizen);
+//     bottomList = bottomList->next;
+//   }
+// }
 
 void incrementAgeGroup(int age, struct vaccinationsAgeGroup** vacs, int mode){
   // mode indicates whether we will increase both a range field

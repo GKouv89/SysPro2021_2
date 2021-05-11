@@ -8,6 +8,7 @@
 #include "../include/citizen.h"
 #include "../include/virus.h"
 #include "../include/setofbfs.h"
+#include "../include/virusRequest.h"
 #include "../include/readWriteOps.h"
 
 void create_bucketList(bucketList **bl, typeOfList type){
@@ -49,6 +50,10 @@ void* search_bucketList(bucketList *bl, char *str){
       }
     }else if(bl->type == Citizen_List){
       if(isEqual_citizen(temp->content, str)){
+        return temp->content;
+      }
+    }else if(bl->type == VirusRequest_List){
+      if(isEqual_virusRequest(temp->content, str)){
         return temp->content;
       }
     }else{
@@ -227,6 +232,9 @@ void destroy_bucketList(bucketList **bl){
     }else if((*bl)->type == Citizen_List){
       Citizen *to_destroy = (Citizen *)to_del->content;
       destroy_citizen(&to_destroy);
+    }else if((*bl)->type == VirusRequest_List){
+      virusRequest *to_destroy = (virusRequest *)to_del->content;
+      destroy_virusRequest(&to_destroy);
     }else{
       setofbloomfilters *to_destroy = (setofbloomfilters *)to_del->content;
       destroy_setOfBFs(&to_destroy);

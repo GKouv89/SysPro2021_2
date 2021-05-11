@@ -3,7 +3,7 @@
 
 #include "requests.h"
 
-void travelRequest(hashMap *, hashMap *, char *, char *, char *, char *, int, int *, int *, requests *);
+void travelRequest(hashMap *, hashMap *, hashMap *, char *, char *, char *, char *, char *, int, int *, int *, requests *);
 void addVaccinationRecords(hashMap *, hashMap *, char *, pid_t *, int *, int *, int, int, int);
 void passCommandLineArgs(int, int, int, int, char *);
 void receiveBloomFiltersFromChild(hashMap *, int, int, int, int, int, int);

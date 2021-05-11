@@ -11,8 +11,9 @@ typedef struct virreq{
 }virusRequest;
 
 void create_virusRequest(virusRequest **, char *);
-void resize_virusRequest(virusRequest *vr);
-void addRequest(virusRequest *, char *, char *);
+int isEqual_virusRequest(virusRequest *, char *);
+void resize_virusRequest(virusRequest *);
+namedRequests* addRequest(virusRequest *, char *, char *);
 namedRequests* findRequest(virusRequest *, char *, char *);
 void destroy_virusRequest(virusRequest **);
 #endif

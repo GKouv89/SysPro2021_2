@@ -42,9 +42,9 @@ listNode *lookup_in_virus_vaccinated_for_list(Virus *v, int citizenID){
   return lookup_skiplist(v->vaccinated_for, citizenID);
 }
 
-void print_non_vaccinated_for(Virus *v){
-  print_skiplist_citizens(v->not_vaccinated_for);
-}
+// void print_non_vaccinated_for(Virus *v){
+//   print_skiplist_citizens(v->not_vaccinated_for);
+// }
 
 int isEqual_virus(Virus *v, unsigned char *str){
   if(strcmp(v->name, str) == 0){

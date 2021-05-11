@@ -15,6 +15,7 @@
 #include "../include/country.h"
 #include "../include/dateOps.h"
 #include "../include/requests.h"
+#include "../include/virusRequest.h"
 #include "../include/readWriteOps.h"
 
 void passCommandLineArgs(int readfd, int writefd, int bufferSize, int sizeOfBloom, char *input_dir){
@@ -168,13 +169,24 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
   free(writePipe);
 }
 
-void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID, char *dateOfTravel, char *countryName, char *virusName, int bufferSize, int *read_file_descs, int *write_file_descs, requests *reqs){
+void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRequest_map, char *citizenID, char *dateOfTravel, char *countryName, char *countryTo, char *virusName, int bufferSize, int *read_file_descs, int *write_file_descs, requests *reqs){
   Country *curr_country;
 	setofbloomfilters *curr_set = (setofbloomfilters *) find_node(setOfBFs_map, virusName);
   if(curr_set == NULL){
     printf("No such virus: %s\n", virusName);
     return;
   }else{
+    // Have we received any requests for this virus yet? If not, time
+    // to create the appropriate 'object' 
+    virusRequest *vr = (virusRequest *) find_node(virusRequest_map, virusName);
+    if(vr == NULL){
+      create_virusRequest(&vr, virusName);
+      insert(virusRequest_map, virusName, vr);
+    }
+    // Now that we definitely have a virusRequest, let's see if there has been any
+    // other requests for travel to the same country on the same date. If not, 
+    // let's create a namedRequest. addRequest does both the check and (if needed) the creation.
+    namedRequests *nreq = addRequest(vr, countryTo, dateOfTravel);
     // Find which monitor handled the country's subdirectory
     curr_country = (Country *) find_node(country_map, countryName);
     if(curr_country == NULL){
@@ -208,18 +220,21 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID,
           case -1: printf("ERROR - TRAVEL DATE BEFORE VACCINATION DATE\n");
               strcpy(request, "REJECT");
               write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
+              rejectNamedRequest(nreq);
               reqs->rejected++;
               reqs->total++;
               break;
           case 0: printf("REQUEST ACCEPTED – HAPPY TRAVELS\n");
               strcpy(request, "ACCEPT");
               write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
+              acceptNamedRequest(nreq);
               reqs->accepted++;
               reqs->total++;
               break;
           case 1: printf("REQUEST REJECTED – YOU WILL NEED ANOTHER VACCINATION BEFORE TRAVEL DATE\n");
               strcpy(request, "REJECT");
               write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
+              rejectNamedRequest(nreq);
               reqs->rejected++;
               reqs->total++;
               break;
@@ -233,6 +248,7 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, char *citizenID,
       free(pipeReadBuffer);
       free(pipeWriteBuffer);
     }else{
+      rejectNamedRequest(nreq);
       reqs->rejected++;
       reqs->total++;
       printf("REQUESTED REJECTED - YOU ARE NOT VACCINATED\n");

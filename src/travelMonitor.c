@@ -37,18 +37,18 @@ void hasChildExited(hashMap *country_map, hashMap *setOfBFs_map, int **children_
 	}
 }
 
-void cleanUp(char **, char **, char **, char **, char **, pid_t **, hashMap **, hashMap **, char **, char **, int **, int **, char **, char **);
+void cleanUp(char **, char **, char **, char **, char **, char **, pid_t **, hashMap **, hashMap **, hashMap **, char **, char **, int **, int **, char **, char **);
 void closePipes(int, int *, int *, char **);
 
 void receiveInterrupt(){
 	receivedInterrupt = 1;
 }
 
-void hasReceivedInterrupt(struct sigaction *act, int numMonitors, pid_t *children_pids, hashMap *country_map, hashMap *setOfBFs_map, requests *reqs, int *read_file_descs, int *write_file_descs, char *pipe_name, char *command, char *dateOfTravel, char *citizenID, char *countryName, char *virusName, char *pipeReadBuffer, char *pipeWriteBuffer, char *input_dir){
+void hasReceivedInterrupt(struct sigaction *act, int numMonitors, pid_t *children_pids, hashMap *country_map, hashMap *setOfBFs_map, hashMap *virusRequest_map, requests *reqs, int *read_file_descs, int *write_file_descs, char *pipe_name, char *command, char *dateOfTravel, char *citizenID, char *countryName, char *countryTo, char *virusName, char *pipeReadBuffer, char *pipeWriteBuffer, char *input_dir){
 	if(receivedInterrupt){
 		noMoreCommands(act, numMonitors, children_pids, country_map, reqs);
 		closePipes(numMonitors, read_file_descs, write_file_descs, &pipe_name);
-		cleanUp(&command, &dateOfTravel, &citizenID, &countryName, &virusName, &children_pids, &country_map, &setOfBFs_map, &pipeReadBuffer, &pipeWriteBuffer, &read_file_descs, &write_file_descs, &pipe_name, &input_dir);
+		cleanUp(&command, &dateOfTravel, &citizenID, &countryName, &countryTo, &virusName, &children_pids, &country_map, &setOfBFs_map, &virusRequest_map, &pipeReadBuffer, &pipeWriteBuffer, &read_file_descs, &write_file_descs, &pipe_name, &input_dir);
 		exit(0);
 	}
 }
@@ -299,36 +299,40 @@ int main(int argc, char *argv[]){
 	// and it has processed the bloomfilters, the first of periodic checks for a child that has quit will take place here.
 	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);
 
+
+  hashMap *virusRequest_map;
+  create_map(&virusRequest_map, 3, VirusRequest_List);
   size_t command_length = 1024, actual_length;
   char *command = malloc(command_length*sizeof(char));
   char *command_name, *rest;
   char *dateOfTravel = malloc(12*sizeof(char));
   char *citizenID = malloc(5*sizeof(char));
   char *countryName = malloc(255*sizeof(char));
+  char *countryTo = malloc(255*sizeof(char));
   char charsToWrite;
   Country *curr_country;
   fd_set standin;
   FD_SET(0, &standin);
   printf("Ready to accept commands.\n");
   while(1){
-	hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
+	hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, virusRequest_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, countryTo, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
 	// Checking if the SIGCHLD signal was received during the previous operation with another monitor.
 	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
 	if(select(1, &standin, NULL, NULL, NULL) < 1 && errno == EINTR){
 		// Checking if the SIGCHLD signal was received while waiting for input from keyboard. 
 		hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
 		// or if there was a SIGINT or SIGQUIT received.
-		hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
+		hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, virusRequest_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, countryTo, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
 	}else{
 		actual_length = getline(&command, &command_length, stdin);
 		command_name = strtok_r(command, " ", &rest);
 		if(strcmp(command_name, "/travelRequest") == 0){
-			if(sscanf(rest, "%s %s %s %s", citizenID, dateOfTravel, countryName, virusName) == 4){
+			if(sscanf(rest, "%s %s %s %s %s", citizenID, dateOfTravel, countryName, countryTo, virusName) == 5){
 				if(dateFormatValidity(dateOfTravel) == -1){
 					printf("Invalid travel date format. Try again.\n");
 					continue;
 				}
-				travelRequest(setOfBFs_map, country_map, citizenID, dateOfTravel, countryName, virusName, bufferSize, read_file_descs, write_file_descs, &reqs);
+				travelRequest(setOfBFs_map, country_map, virusRequest_map, citizenID, dateOfTravel, countryName, countryTo, virusName, bufferSize, read_file_descs, write_file_descs, &reqs);
 			}else{
 				printf("Bad arguments to /travelRequest. Try again.\n");
 			}
@@ -353,7 +357,7 @@ int main(int argc, char *argv[]){
 	}
   }
 	closePipes(numMonitors, read_file_descs, write_file_descs, &pipe_name);
-	cleanUp(&command, &dateOfTravel, &citizenID, &countryName, &virusName, &children_pids, &country_map, &setOfBFs_map, &pipeReadBuffer, &pipeWriteBuffer, &read_file_descs, &write_file_descs, &pipe_name, &input_dir);
+	cleanUp(&command, &dateOfTravel, &citizenID, &countryName, &countryTo, &virusName, &children_pids, &country_map, &setOfBFs_map, &virusRequest_map, &pipeReadBuffer, &pipeWriteBuffer, &read_file_descs, &write_file_descs, &pipe_name, &input_dir);
 }
 
 void closePipes(int numMonitors, int *read_file_descs, int *write_file_descs, char **pipe_name){
@@ -371,11 +375,12 @@ void closePipes(int numMonitors, int *read_file_descs, int *write_file_descs, ch
 	}
 }
 
-void cleanUp(char **command, char **dateOfTravel, char **citizenID, char **countryName, char **virusName, pid_t **children_pids, hashMap **country_map, hashMap **setOfBFs_map, char **pipeReadBuffer, char **pipeWriteBuffer, int **read_file_descs, int **write_file_descs, char **pipe_name, char **input_dir){
+void cleanUp(char **command, char **dateOfTravel, char **citizenID, char **countryName, char **countryTo, char **virusName, pid_t **children_pids, hashMap **country_map, hashMap **setOfBFs_map, hashMap **virusRequest_map, char **pipeReadBuffer, char **pipeWriteBuffer, int **read_file_descs, int **write_file_descs, char **pipe_name, char **input_dir){
 	free(*command);
 	free(*dateOfTravel);
 	free(*citizenID);
 	free(*countryName);
+	free(*countryTo);
 	free(*virusName);
   	free(*children_pids);
 	free(*pipeWriteBuffer);
@@ -386,4 +391,5 @@ void cleanUp(char **command, char **dateOfTravel, char **citizenID, char **count
 	free(*input_dir);
 	destroy_map(country_map);
 	destroy_map(setOfBFs_map);
+	destroy_map(virusRequest_map);
 }
