@@ -3,7 +3,7 @@
 
 typedef struct country{
   char *name;
-  int index;
+  int index; // only valid for parent process, it is the index of the child that has bloomfilters/skiplists about vaccinations in this country.
   int maxFile; // only valid for monitor processes. it is the number of files in the directory that have been read so far.
 } Country;
 

@@ -59,7 +59,6 @@ do
   fileNum=roundRobin["${words[3]}"]
   fileNum=$(( $fileNum + 1 ))
   fileName="$2/${words[3]}/${words[3]}-$fileNum.txt"
-  echo About to print to $fileName
   echo $line >> "$fileName"
   roundRobin["${words[3]}"]=$(( roundRobin["${words[3]}"] + 1 ));
   roundRobin["${words[3]}"]=$(( roundRobin["${words[3]}"] % $3 ))
