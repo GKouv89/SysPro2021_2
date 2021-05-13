@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "../include/virusRequest.h"
+#include "../include/dateOps.h"
 
 void create_virusRequest(virusRequest **vr, char *virusName){
     *vr = malloc(sizeof(virusRequest));
@@ -49,6 +50,27 @@ namedRequests* findRequest(virusRequest *vr, char *countryTo, char *date){
         }
     }
     return NULL;
+}
+
+void gatherStatistics(virusRequest *vr, char *date1, char *date2, char *countryTo, int mode, requests *reqs){
+    for(int i = 0; i < vr->length; i++){
+        if(mode){
+            if(isRequestForCountryTo(vr->requests[i], countryTo)){
+                if(!dateComparison(date1, vr->requests[i]->date) && !dateComparison(vr->requests[i]->date, date2)){
+                    reqs->accepted += vr->requests[i]->acceptedOnThisDate;
+                    reqs->rejected += vr->requests[i]->rejectedOnThisDate;
+                    reqs->total += vr->requests[i]->totalOnThisDate;
+                }
+            }
+        }else{
+            // Straight to date comparison, we don't care for the country.
+            if(!dateComparison(date1, vr->requests[i]->date) && !dateComparison(vr->requests[i]->date, date2)){
+                reqs->accepted += vr->requests[i]->acceptedOnThisDate;
+                reqs->rejected += vr->requests[i]->rejectedOnThisDate;
+                reqs->total += vr->requests[i]->totalOnThisDate;
+            }
+        }
+    }
 }
 
 void destroy_virusRequest(virusRequest **vr){
