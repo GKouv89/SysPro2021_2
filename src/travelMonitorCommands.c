@@ -19,14 +19,14 @@
 #include "../include/readWriteOps.h"
 
 void passCommandLineArgs(int readfd, int writefd, int bufferSize, int sizeOfBloom, char *input_dir){
-  char inputDirLength, charsToWrite, charsCopied = 0;
+  unsigned int inputDirLength, charsToWrite, charsCopied = 0;
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
   char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
   if(write(writefd, &bufferSize, sizeof(int)) < 0){
     perror("write bufferSize");
   }else{
     // Waiting for confirmation from the child for bufferSize
-    while(read(readfd, pipeReadBuffer, bufferSize) < 0);
+    while(read(readfd, pipeReadBuffer, sizeof(char)) < 0);
     // Letting child know size of bloomfilters
     if(write(writefd, &sizeOfBloom, sizeof(int)) < 0){
       perror("write sizeOfBloom length");
@@ -36,7 +36,7 @@ void passCommandLineArgs(int readfd, int writefd, int bufferSize, int sizeOfBloo
     // Letting monitors know input_dir's length and then name,
     // so they have the full path to their subdirectories.
     inputDirLength = strlen(input_dir); // Not an actual country yet.
-    if(write(writefd, &inputDirLength, sizeof(char)) < 0){
+    if(write(writefd, &inputDirLength, sizeof(int)) < 0){
       perror("write input_dir length");
     }else{
       while(charsCopied < inputDirLength){
@@ -58,17 +58,17 @@ void passCommandLineArgs(int readfd, int writefd, int bufferSize, int sizeOfBloo
 }
 
 void receiveBloomFiltersFromChild(hashMap *setOfBFs_map, int readfd, int writefd, int index, int bufferSize, int numMonitors, int sizeOfBloom){
-  char dataLength, charactersParsed, charactersRead;
+  unsigned int dataLength, charactersParsed;
+  int charactersRead;
   char *virusName = calloc(255, sizeof(char));
   char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
   setofbloomfilters *curr_set;
   while(1){
-    if(read(readfd, &dataLength, sizeof(char)) < 0){
+    if(read(readfd, &dataLength, sizeof(int)) < 0){
       // perror("read virus name length");
       continue;
     }else{
-      // printf("Virus name length: %d\n", dataLength);
       charactersParsed = 0;
       while(charactersParsed < dataLength){
         if((charactersRead = read(readfd, pipeReadBuffer, bufferSize)) < 0){
@@ -81,8 +81,6 @@ void receiveBloomFiltersFromChild(hashMap *setOfBFs_map, int readfd, int writefd
         }		
       }
       if(strcmp(virusName, "END") == 0){
-        // printf("Done receiving from monitor no %d\n", k);
-        // memset(virusName, 0, 255*sizeof(char));
         break;
       }else{
         // printf("Received faux bloom filter for Virus %s from monitor %d\n", virusName, k);
@@ -194,13 +192,13 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRe
       return;
     }
     if(lookup_bf_vaccination(curr_set, curr_country->index, citizenID) == 1){
-      char *request = malloc(255*sizeof(char));
+      char *request = malloc(1024*sizeof(char));
       char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
       char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-      char request_length, charsCopied, charsToWrite, charactersRead;
+      unsigned int request_length;
       sprintf(request, "checkSkiplist %s %s %s", citizenID, virusName, countryName);
       write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
-      memset(request, 0, 255*sizeof(char));
+      memset(request, 0, 1024*sizeof(char));
       read_content(&request, &pipeReadBuffer, read_file_descs[curr_country->index], bufferSize);
       // Send confirmation of answer reception.
       if(write(write_file_descs[curr_country->index], "1", sizeof(char)) < 0){
@@ -218,7 +216,7 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRe
         char *answer = malloc(4*sizeof(char));
         char *date = malloc(12*sizeof(char));
         sscanf(request, "%s %s", answer, date);
-        memset(request, 0, 255*sizeof(char));
+        memset(request, 0, 1024*sizeof(char));
         switch(dateDiff(dateOfTravel, date)){
           case -1: printf("ERROR - TRAVEL DATE BEFORE VACCINATION DATE\n");
               strcpy(request, "REJECT");
@@ -269,13 +267,13 @@ void addVaccinationRecords(hashMap *country_map, hashMap *setOfBFs_map, char *co
   // printf("Child %d is in charge of subdirectory: %s\n", index, countryName);
   kill(children_pids[index], 10);
   // Sending directory name through pipe...
-  char countryLength = strlen(countryName);
+  unsigned int countryLength = strlen(countryName);
   char confirmation;
   while(read(read_file_descs[index], &confirmation, sizeof(char)) < 0);
-  if(write(write_file_descs[index], &countryLength, sizeof(char)) < 0){
+  if(write(write_file_descs[index], &countryLength, sizeof(int)) < 0){
     perror("write name of directory with new files");
   }else{
-    char charsCopied = 0, charsToWrite = 0;
+    unsigned int charsCopied = 0, charsToWrite = 0;
     char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
     while(charsCopied < countryLength){
       if(countryLength - charsCopied < bufferSize){
@@ -326,7 +324,7 @@ void noMoreCommands(struct sigaction *act, int numMonitors, pid_t *children_pids
 }
 
 void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int numMonitors, int bufferSize, char *citizenID){
-  char commandLength, charsWritten, charsToWrite; 
+  unsigned int commandLength, charsWritten, charsToWrite;
   char *command = malloc(15*sizeof(char));
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
   char confirmation;
@@ -334,7 +332,7 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
   commandLength = strlen(command);
   int i;
   for(i = 0; i < numMonitors; i++){
-    if(write(write_file_descs[i], &commandLength, sizeof(char)) < 0){
+    if(write(write_file_descs[i], &commandLength, sizeof(int)) < 0){
       perror("write checkVacc length");
     }else{
       charsWritten = 0;

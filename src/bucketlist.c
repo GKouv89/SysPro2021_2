@@ -74,7 +74,7 @@ void* search_bucketList(bucketList *bl, char *str){
 void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int bufferSize){
    if(bl->type == Virus_List){
       bucketNode *temp = bl->front;
-      unsigned char virusNameLength, charsCopied, charsToWrite;
+      unsigned int virusNameLength, charsCopied, charsToWrite;
       char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
       char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
       bloomFilter *bf;
@@ -83,7 +83,7 @@ void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int buffer
       while(temp){
         // First, send virus name length.
         virusNameLength = strlen(((Virus *)temp->content)->name);
-        if(write(writefd, &virusNameLength, sizeof(char)) < 0){
+        if(write(writefd, &virusNameLength, sizeof(int)) < 0){
             perror("write virus name length");
         }else{
           charsCopied = 0;
@@ -167,7 +167,7 @@ void printSubdirNames(bucketList *bl, FILE *fp){
 void vacStatus_all(bucketList *bl, unsigned char *citizenID, int readfd, int writefd, int bufferSize){
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
   char *answer = malloc(255*sizeof(char));
-  char virusLength, charsWritten, charsToWrite, confirmation, answerLength;
+  char confirmation;
   if(bl->type == Virus_List){
     bucketNode *temp = bl->front;
     listNode *res;

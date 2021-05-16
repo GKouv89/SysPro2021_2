@@ -5,9 +5,10 @@
 
 
 void read_content(char **info_buffer, char **reading_buffer, int readfd, int bufferSize){
-    char contentLength;
-    while(read(readfd, &contentLength, sizeof(char)) < 0);
-    char charsRead, charsCopied = 0;
+    unsigned int contentLength;
+    while(read(readfd, &contentLength, sizeof(int)) < 0);
+    int charsRead;
+    unsigned int charsCopied = 0;
     char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
     while(charsCopied < contentLength){
         if((charsRead = read(readfd, pipeReadBuffer, bufferSize)) < 0){
@@ -21,11 +22,11 @@ void read_content(char **info_buffer, char **reading_buffer, int readfd, int buf
 }
 
 void write_content(char *info_buffer, char **writing_buffer, int writefd, int bufferSize){
-    char contentLength = strlen(info_buffer);
-    if(write(writefd, &contentLength, sizeof(char)) < 0){
+    unsigned int contentLength = strlen(info_buffer);
+    if(write(writefd, &contentLength, sizeof(int)) < 0){
         perror("write content length");
     }else{
-        char charsWritten = 0, charsToWrite;
+        unsigned int charsWritten = 0, charsToWrite;
         while(charsWritten < contentLength){
             if(contentLength - charsWritten < bufferSize){
                 charsToWrite = contentLength - charsWritten;

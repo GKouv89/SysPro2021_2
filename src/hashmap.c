@@ -45,9 +45,9 @@ void send_bloomFilters(hashMap *map, int readfd, int writefd, int bufferSize){
       send_virus_Bloomfilters(map->map[i]->bl, readfd, writefd, bufferSize);
     }
     char *endStr = "END";
-    char charsCopied, endStrLen = 3;
+    unsigned int charsCopied, endStrLen = 3;
     char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-    if(write(writefd, &endStrLen, sizeof(char)) < 0){
+    if(write(writefd, &endStrLen, sizeof(int)) < 0){
       perror("write END length");
     }else{ 
       charsCopied = 0;
@@ -70,10 +70,10 @@ void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSi
   }
   char *pipeReadBuffer = malloc(bufferSize*sizeof(char));  
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-  char countryLength, charsCopied, charsToWrite;
+  unsigned int countryLength, charsCopied, charsToWrite;
   for(int i = 0; i < countryIndex; i++){
     countryLength = strlen(countries[i]);
-    if(write(writefd, &countryLength, sizeof(char)) < 0){
+    if(write(writefd, &countryLength, sizeof(int)) < 0){
       perror("write country length to new child");
     }else{
       charsCopied = 0;
@@ -93,8 +93,8 @@ void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSi
     }
   }
   char *endStr = "END";
-  char endStrLen = 3;
-  if(write(writefd, &endStrLen, sizeof(char)) < 0){
+  unsigned int endStrLen = 3;
+  if(write(writefd, &endStrLen, sizeof(int)) < 0){
     perror("write END length");
   }else{
     charsCopied = 0;
@@ -142,7 +142,6 @@ void lookup_vacStatus_all(hashMap *map, unsigned char *citizenID, int readfd, in
   char *endStr = "END";
   write_content(endStr, &pipeWriteBuffer, writefd, bufferSize);
   free(pipeWriteBuffer);
-  printf("SENT ALL VIRUSES\n");
 }
 
 /////////////////////////////////////////////////////////////////

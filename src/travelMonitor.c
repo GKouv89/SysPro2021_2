@@ -77,23 +77,22 @@ int main(int argc, char *argv[]){
 	int i;
 	int numMonitors, bufferSize, sizeOfBloom;
 	char *input_dir = malloc(255*sizeof(char));
-	char *bufferSizeArg;
   	for(i = 1; i < 9; i += 2){
 		if(strlen(argv[i]) != 2){
 			printf("Invalid flag %s\n", argv[i]);
 			return 1;
 		}
 		switch(argv[i][1]){
-		case 'm': numMonitors = atoi(argv[i+1]);
-				break;
-		case 'b': bufferSize = atoi(argv[i+1]);
+			case 'm': numMonitors = atoi(argv[i+1]);
 					break;
-		case 's': sizeOfBloom = atoi(argv[i+1]);
-				break;
-		case 'i': strcpy(input_dir, argv[i+1]);
-				break;
-		default: printf("Invalid flag %s\n", argv[i]);
-				return 1;
+			case 'b': bufferSize = atoi(argv[i+1]);
+						break;
+			case 's': sizeOfBloom = atoi(argv[i+1]);
+					break;
+			case 'i': strcpy(input_dir, argv[i+1]);
+					break;
+			default: printf("Invalid flag %s\n", argv[i]);
+					return 1;
 		}    
 	}
 	char *pipe_name = malloc(20*sizeof(char));
@@ -151,8 +150,8 @@ int main(int argc, char *argv[]){
 	int *write_file_descs = malloc(numMonitors*sizeof(int));
 	char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
 	char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-	int charsCopied;
-	char countryLength = 0;
+	unsigned int charsCopied;
+	unsigned int countryLength = 0;
 	// Opening pipes created from monitors where parent will write
 	// the countries each monitor will process.
 	for(i = 1; i <= numMonitors; i++){
@@ -187,7 +186,7 @@ int main(int argc, char *argv[]){
 			}
 			charsCopied = 0;
 			countryLength = strlen(alphabeticOrder[i]->d_name);
-			if(write(write_file_descs[roundRobin], &countryLength, sizeof(char)) < 0){
+			if(write(write_file_descs[roundRobin], &countryLength, sizeof(int)) < 0){
 				perror("write");
 			}else{
 				while(charsCopied < countryLength){
@@ -214,7 +213,7 @@ int main(int argc, char *argv[]){
 			}
 			charsCopied = 0;
 			countryLength = strlen(endOfMessage);
-			if(write(write_file_descs[i-1], &countryLength, sizeof(char)) < 0){
+			if(write(write_file_descs[i-1], &countryLength, sizeof(int)) < 0){
 				perror("write");
 			}else{
 				while(charsCopied < countryLength){
@@ -261,7 +260,6 @@ int main(int argc, char *argv[]){
 		read_bloom_descs[i] = 1;
 	}
 	int max = read_file_descs[i-1] + 1;
-	char dataLength, charactersRead, charactersParsed;
 	char *virusName = calloc(255, sizeof(char));
 	for(i = 0; i < numMonitors; ){
 		// printf("Iteration of select/read duo...\n");
@@ -300,84 +298,83 @@ int main(int argc, char *argv[]){
 	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);
 
 
-  hashMap *virusRequest_map;
-  create_map(&virusRequest_map, 3, VirusRequest_List);
-  size_t command_length = 1024, actual_length;
-  char *command = malloc(command_length*sizeof(char));
-  char *command_name, *rest;
-  char *dateOfTravel = malloc(12*sizeof(char));
-  char *citizenID = malloc(5*sizeof(char));
-  char *countryName = malloc(255*sizeof(char));
-  char *countryTo = malloc(255*sizeof(char));
-  char charsToWrite;
-  Country *curr_country;
-  fd_set standin;
-  FD_SET(0, &standin);
-  printf("Ready to accept commands.\n");
-  while(1){
-	hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, virusRequest_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, countryTo, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
-	// Checking if the SIGCHLD signal was received during the previous operation with another monitor.
-	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
-	if(select(1, &standin, NULL, NULL, NULL) < 1 && errno == EINTR){
-		// Checking if the SIGCHLD signal was received while waiting for input from keyboard. 
-		hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
-		// or if there was a SIGINT or SIGQUIT received.
+	hashMap *virusRequest_map;
+	create_map(&virusRequest_map, 3, VirusRequest_List);
+	size_t command_length = 1024, actual_length;
+	char *command = malloc(command_length*sizeof(char));
+	char *command_name, *rest;
+	char *dateOfTravel = malloc(12*sizeof(char));
+	char *citizenID = malloc(5*sizeof(char));
+	char *countryName = malloc(255*sizeof(char));
+	char *countryTo = malloc(255*sizeof(char));
+	Country *curr_country;
+	fd_set standin;
+	FD_SET(0, &standin);
+	printf("Ready to accept commands.\n");
+	while(1){
 		hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, virusRequest_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, countryTo, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
-	}else{
-		actual_length = getline(&command, &command_length, stdin);
-		command_name = strtok_r(command, " ", &rest);
-		if(strcmp(command_name, "/travelRequest") == 0){
-			if(sscanf(rest, "%s %s %s %s %s", citizenID, dateOfTravel, countryName, countryTo, virusName) == 5){
-				if(dateFormatValidity(dateOfTravel) == -1){
-					printf("Invalid travel date format. Try again.\n");
-					continue;
-				}
-				travelRequest(setOfBFs_map, country_map, virusRequest_map, citizenID, dateOfTravel, countryName, countryTo, virusName, bufferSize, read_file_descs, write_file_descs, &reqs);
-			}else{
-				printf("Bad arguments to /travelRequest. Try again.\n");
-			}
-		}else if(strcmp(command_name, "/exit\n") == 0){
-			noMoreCommands(&act, numMonitors, children_pids, country_map, &reqs);
-			break;
-		}else if(strcmp(command_name, "/addVaccinationRecords") == 0){
-			if(sscanf(rest, "%s", countryName) == 1){
-				addVaccinationRecords(country_map, setOfBFs_map, countryName, children_pids, read_file_descs, write_file_descs, bufferSize, numMonitors, sizeOfBloom);
-			}else{
-				printf("Bad arguments to /addVaccinationRecords. Try again.\n");
-			}
-		}else if(strcmp(command_name, "/searchVaccinationStatus") == 0){
-			if(sscanf(rest, "%s", citizenID) == 1){
-				searchVaccinationStatus(read_file_descs, write_file_descs, numMonitors, bufferSize, citizenID);
-			}else{
-				printf("Bad arguments to /searchVaccinationStatus. Try again.\n");
-			}
-		}else if(strcmp(command_name, "/travelStats") == 0){
-			char *date1 = malloc(11*sizeof(char));
-			char *date2 = malloc(11*sizeof(char));
-			if(sscanf(rest, "%s %s %s %s", virusName, date1, date2, countryTo) == 4){
-				if(dateFormatValidity(date1) == -1 || dateFormatValidity(date2) == -1){
-					printf("Invalid date format. Try again.\n");
-				}else{
-					// Checking specifically for countryTo
-					travelStats(virusRequest_map, virusName, date1, date2, countryTo, 1);
-				}
-			}else if(sscanf(rest, "%s %s %s", virusName, date1, date2) == 3){
-				if(dateFormatValidity(date1) == -1 || dateFormatValidity(date2) == -1){
-					printf("Invalid date format. Try again.\n");
-				}else{
-					// Checking for all countries
-					travelStats(virusRequest_map, virusName, date1, date2, NULL, 0);
-				}
-			}else{
-				printf("Bad arguments to /travelStats. Try again.\n");
-			}
-			free(date1);
-			free(date2);
+		// Checking if the SIGCHLD signal was received during the previous operation with another monitor.
+		hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
+		if(select(1, &standin, NULL, NULL, NULL) < 1 && errno == EINTR){
+			// Checking if the SIGCHLD signal was received while waiting for input from keyboard. 
+			hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    
+			// or if there was a SIGINT or SIGQUIT received.
+			hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, virusRequest_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, countryTo, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
 		}else{
-			printf("Unknown command. Try again.\n");
+			actual_length = getline(&command, &command_length, stdin);
+			command_name = strtok_r(command, " ", &rest);
+			if(strcmp(command_name, "/travelRequest") == 0){
+				if(sscanf(rest, "%s %s %s %s %s", citizenID, dateOfTravel, countryName, countryTo, virusName) == 5){
+					if(dateFormatValidity(dateOfTravel) == -1){
+						printf("Invalid travel date format. Try again.\n");
+						continue;
+					}
+					travelRequest(setOfBFs_map, country_map, virusRequest_map, citizenID, dateOfTravel, countryName, countryTo, virusName, bufferSize, read_file_descs, write_file_descs, &reqs);
+				}else{
+					printf("Bad arguments to /travelRequest. Try again.\n");
+				}
+			}else if(strcmp(command_name, "/exit\n") == 0){
+				noMoreCommands(&act, numMonitors, children_pids, country_map, &reqs);
+				break;
+			}else if(strcmp(command_name, "/addVaccinationRecords") == 0){
+				if(sscanf(rest, "%s", countryName) == 1){
+					addVaccinationRecords(country_map, setOfBFs_map, countryName, children_pids, read_file_descs, write_file_descs, bufferSize, numMonitors, sizeOfBloom);
+				}else{
+					printf("Bad arguments to /addVaccinationRecords. Try again.\n");
+				}
+			}else if(strcmp(command_name, "/searchVaccinationStatus") == 0){
+				if(sscanf(rest, "%s", citizenID) == 1){
+					searchVaccinationStatus(read_file_descs, write_file_descs, numMonitors, bufferSize, citizenID);
+				}else{
+					printf("Bad arguments to /searchVaccinationStatus. Try again.\n");
+				}
+			}else if(strcmp(command_name, "/travelStats") == 0){
+				char *date1 = malloc(11*sizeof(char));
+				char *date2 = malloc(11*sizeof(char));
+				if(sscanf(rest, "%s %s %s %s", virusName, date1, date2, countryTo) == 4){
+					if(dateFormatValidity(date1) == -1 || dateFormatValidity(date2) == -1){
+						printf("Invalid date format. Try again.\n");
+					}else{
+						// Checking specifically for countryTo
+						travelStats(virusRequest_map, virusName, date1, date2, countryTo, 1);
+					}
+				}else if(sscanf(rest, "%s %s %s", virusName, date1, date2) == 3){
+					if(dateFormatValidity(date1) == -1 || dateFormatValidity(date2) == -1){
+						printf("Invalid date format. Try again.\n");
+					}else{
+						// Checking for all countries
+						travelStats(virusRequest_map, virusName, date1, date2, NULL, 0);
+					}
+				}else{
+					printf("Bad arguments to /travelStats. Try again.\n");
+				}
+				free(date1);
+				free(date2);
+			}else{
+				printf("Unknown command. Try again.\n");
+			}
 		}
 	}
-  }
 	closePipes(numMonitors, read_file_descs, write_file_descs, &pipe_name);
 	cleanUp(&command, &dateOfTravel, &citizenID, &countryName, &countryTo, &virusName, &children_pids, &country_map, &setOfBFs_map, &virusRequest_map, &pipeReadBuffer, &pipeWriteBuffer, &read_file_descs, &write_file_descs, &pipe_name, &input_dir);
 }

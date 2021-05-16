@@ -39,13 +39,13 @@ void toReadNewFiles(){
 void newFilesAvailable(hashMap *country_map, hashMap *citizen_map, hashMap *virus_map, int readfd, int writefd, int bufferSize, int sizeOfBloom, char *input_dir){
 	if(newFiles){
 		char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
-		char countryLength;
+		unsigned int countryLength;
 		if(write(writefd, "1", sizeof(char)) < 0){
 			perror("write confirmation that child is in SIGUSR1 handler");
 		}
-		while(read(readfd, &countryLength, sizeof(char)) < 0);
+		while(read(readfd, &countryLength, sizeof(int)) < 0);
 		char *countryName = calloc(countryLength + 1, sizeof(char));
-		char charsRead, charsCopied = 0;
+		unsigned int charsRead, charsCopied = 0;
 		while(charsCopied < countryLength){
 			while((charsRead = read(readfd, pipeReadBuffer, bufferSize*sizeof(char))) < 0);
 			strncat(countryName, pipeReadBuffer, charsRead*sizeof(char));
@@ -139,8 +139,9 @@ int main(int argc, char *argv[]){
 	for(i = 0; i < countriesLength; i++){
 		countries[i] = calloc(255, sizeof(char));
 	}
-	int charactersRead, charactersParsed = 0, done = 0;
-	char currCountryLength;
+	int charactersRead;
+	unsigned int charactersParsed = 0, done = 0;
+	unsigned int currCountryLength;
 	char *readPipeBuffer = malloc(bufferSize*sizeof(char));
 	while(!done){
 		// Send confirmation to parent that
@@ -159,7 +160,7 @@ int main(int argc, char *argv[]){
 			done = 1;
 		}
 		if(FD_ISSET(readfd, &rd)){
-			if(read(readfd, &currCountryLength, sizeof(char)) < 0){
+			if(read(readfd, &currCountryLength, sizeof(int)) < 0){
 				perror("country length read");
 			}else{
 				while(charactersParsed < currCountryLength){
@@ -252,74 +253,74 @@ int main(int argc, char *argv[]){
   	send_bloomFilters(virus_map, readfd, writefd, bufferSize);
 	checkForExit(readfd, writefd, countries, countryIndex, &reqs);
 
-  char commandLength, charactersCopied, charsToWrite; 
-  char *command = calloc(255, sizeof(char));
-  char *command_name, *rest;
-  char *citizenID = malloc(5*sizeof(char));
-  char *virusName = malloc(50*sizeof(char));
-  char *countryFrom = malloc(255*sizeof(char));
-  char *writePipeBuffer = malloc(bufferSize*sizeof(char));
-  while(1){
-	// Checking to see if SIGINT or SIGQUIT was received during the immediate previous operation.
-	checkForExit(readfd, writefd, countries, countryIndex, &reqs);
-	// Checking to see if SIGUSR1 was received during the immediate previous operation.
-	newFilesAvailable(country_map, citizen_map, virus_map, readfd, writefd, bufferSize, sizeOfBloom, countries[0]);
-
-    FD_ZERO(&rd);
-    FD_SET(readfd, &rd);
-    if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1 && errno == EINTR){
-		// Checking to see if SIGINT or SIGQUIT was received while waiting for a request.
+	unsigned int commandLength, charactersCopied, charsToWrite;
+	char *command = calloc(255, sizeof(char));
+	char *command_name, *rest;
+	char *citizenID = malloc(5*sizeof(char));
+	char *virusName = malloc(50*sizeof(char));
+	char *countryFrom = malloc(255*sizeof(char));
+	char *writePipeBuffer = malloc(bufferSize*sizeof(char));
+	while(1){
+		// Checking to see if SIGINT or SIGQUIT was received during the immediate previous operation.
 		checkForExit(readfd, writefd, countries, countryIndex, &reqs);
-		// perror("select child while waiting for command");
-		// Checking to see if SIGUSR1 was received while waiting for a request.
+		// Checking to see if SIGUSR1 was received during the immediate previous operation.
 		newFilesAvailable(country_map, citizen_map, virus_map, readfd, writefd, bufferSize, sizeOfBloom, countries[0]);
-    }else{
-      if(read(readfd, &commandLength, sizeof(char)) < 0){
-        perror("read request length");
-      }else{
-			memset(command, 0, 255*sizeof(char));
-			charactersParsed = 0;
-			while(charactersParsed < commandLength){
-				if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
-					continue;
-				}else{
-					strncat(command, readPipeBuffer, charactersRead*sizeof(char));
-					charactersParsed += charactersRead;
-				}
-			}
-			command_name = strtok_r(command, " ", &rest);
-			if(strcmp(command_name, "checkSkiplist") == 0){
-				if(sscanf(rest, "%s %s %s", citizenID, virusName, countryFrom) == 3){
-					Country *country = (Country *) find_node(country_map, countryFrom);
-					Citizen *citizen = (Citizen *) find_node(citizen_map, citizenID);
-					// One of three error cases
-					// Citizen ID doesn't exist (at least in our monitor)
-					// Citizen ID exists but countryFrom is invalid and doesn't
-					// Citizen ID exists and so does countryFrom, but it is not the
-					// citizen's actual country!
-					// If the last one wasn't caught, the checks could go through 
-					// the bloom filter with no problem.
-					if(country == NULL || citizen == NULL || citizen->country != country){
-						// Send BAD COUNTRY response to parent.
-						char *response = calloc(12, sizeof(char));
-						strcpy(response, "BAD COUNTRY");
-						write_content(response, &writePipeBuffer, writefd, bufferSize);
-						while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
-						free(response);
-					}else{
-						checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd, &reqs);
-					}
-				}
-			}else if(strcmp(command_name, "checkVacc") == 0){
-				if(sscanf(rest, "%s", citizenID) == 1){
-					checkVacc(citizen_map, virus_map, citizenID, readfd, writefd, bufferSize);
-				}
+
+		FD_ZERO(&rd);
+		FD_SET(readfd, &rd);
+		if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1 && errno == EINTR){
+			// Checking to see if SIGINT or SIGQUIT was received while waiting for a request.
+			checkForExit(readfd, writefd, countries, countryIndex, &reqs);
+			// perror("select child while waiting for command");
+			// Checking to see if SIGUSR1 was received while waiting for a request.
+			newFilesAvailable(country_map, citizen_map, virus_map, readfd, writefd, bufferSize, sizeOfBloom, countries[0]);
+		}else{
+			if(read(readfd, &commandLength, sizeof(int)) < 0){
+				perror("read request length");
 			}else{
-				printf("Unknown command in child: %s\n", command_name);
+					memset(command, 0, 255*sizeof(char));
+					charactersParsed = 0;
+					while(charactersParsed < commandLength){
+						if((charactersRead = read(readfd, readPipeBuffer, bufferSize)) < 0){
+							continue;
+						}else{
+							strncat(command, readPipeBuffer, charactersRead*sizeof(char));
+							charactersParsed += charactersRead;
+						}
+					}
+					command_name = strtok_r(command, " ", &rest);
+					if(strcmp(command_name, "checkSkiplist") == 0){
+						if(sscanf(rest, "%s %s %s", citizenID, virusName, countryFrom) == 3){
+							Country *country = (Country *) find_node(country_map, countryFrom);
+							Citizen *citizen = (Citizen *) find_node(citizen_map, citizenID);
+							// One of three error cases
+							// Citizen ID doesn't exist (at least in our monitor)
+							// Citizen ID exists but countryFrom is invalid and doesn't
+							// Citizen ID exists and so does countryFrom, but it is not the
+							// citizen's actual country!
+							// If the last one wasn't caught, the checks could go through 
+							// the bloom filter with no problem.
+							if(country == NULL || citizen == NULL || citizen->country != country){
+								// Send BAD COUNTRY response to parent.
+								char *response = calloc(12, sizeof(char));
+								strcpy(response, "BAD COUNTRY");
+								write_content(response, &writePipeBuffer, writefd, bufferSize);
+								while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
+								free(response);
+							}else{
+								checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd, &reqs);
+							}
+						}
+					}else if(strcmp(command_name, "checkVacc") == 0){
+						if(sscanf(rest, "%s", citizenID) == 1){
+							checkVacc(citizen_map, virus_map, citizenID, readfd, writefd, bufferSize);
+						}
+					}else{
+						printf("Unknown command in child: %s\n", command_name);
+					}
 			}
-      }
-    }
-  }
+		}
+	}
 
 	// Releasing resources...
 	// for(i = 0; i < countriesLength; i++){

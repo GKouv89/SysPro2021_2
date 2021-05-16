@@ -52,7 +52,8 @@ int lookup_bf_vaccination(setofbloomfilters *set, int index, unsigned char *str)
 void read_BF(setofbloomfilters *set, int readfd, int writefd, int index, int bufferSize){
     char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
     char pipeWriteBuffer;
-    int bytesRead, bytesParsed = 0;
+    int bytesRead;
+    unsigned int bytesParsed = 0;
     int sizeOfBloom = (set->bfs[index]->size)/8;
     while(bytesParsed < sizeOfBloom){
         // printf("bytesParsed: %d\n", bytesParsed);

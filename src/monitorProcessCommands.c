@@ -20,7 +20,7 @@ void checkSkiplist(hashMap *virus_map, char *citizenID, char *virusName, int buf
     reqs->rejected++;
     reqs->total++;
   }
-  char answerLength = strlen(answer);
+  unsigned int answerLength = strlen(answer);
   char *readPipeBuffer = malloc(bufferSize*sizeof(char));
   char *writePipeBuffer = malloc(bufferSize*sizeof(char));
   write_content(answer, &writePipeBuffer, writefd, bufferSize);
