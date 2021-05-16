@@ -121,7 +121,7 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
   close(write_file_descs[index]);
 
   pid_t pid;
-  char *path = "./monitorProcess"; 
+  char *path = "./Monitor"; 
   char *readPipe = malloc(20*sizeof(char));
   char *writePipe = malloc(20*sizeof(char));
   sprintf(readPipe, "/tmp/%dr", index+1);
