@@ -126,7 +126,7 @@ int main(int argc, char *argv[]){
 	// readPipe is the pipe from which the parent reads and the monitor writes to.
 	// writePipe is the pipe for the opposite direction of communication.
   	pid_t *children_pids = malloc(numMonitors*sizeof(int));
-	char *path = "./monitorProcess"; 
+	char *path = "./Monitor"; 
 	char *readPipe = malloc(20*sizeof(char));
 	char *writePipe = malloc(20*sizeof(char));
 	for(i = 1; i <= numMonitors; i++){

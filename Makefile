@@ -5,7 +5,7 @@ LINK = -lm
 
 TESTEXECS = testsetofbfs testBloomFilter testDateDiff testVirusRequest
 
-all: travelMonitor monitorProcess
+all: travelMonitor Monitor
 
 build/%.o: src/%.c
 	gcc $(FLAGS) $< -o $@
@@ -13,7 +13,7 @@ build/%.o: src/%.c
 travelMonitor: build/travelMonitor.o $(COMMON) 
 	gcc -o $@ $^ $(LINK)
 
-monitorProcess: build/monitorProcess.o $(COMMON) $(MONITOROBJ)
+Monitor: build/monitorProcess.o $(COMMON) $(MONITOROBJ)
 	gcc -o $@ $^ $(LINK)
 
 testbuild/%.o: test/%.c

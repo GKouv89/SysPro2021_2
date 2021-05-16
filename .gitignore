@@ -7,7 +7,7 @@ build/*.o
 *.obj
 *.elf
 travelMonitor
-monitorProcess
+Monitor
 
 # Linker output
 *.ilk
