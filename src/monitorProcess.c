@@ -15,6 +15,7 @@
 #include "../include/skiplist.h"
 #include "../include/monitorProcessCommands.h"
 #include "../include/requests.h"
+#include "../include/readWriteOps.h"
 
 extern int errno;
 
@@ -256,6 +257,7 @@ int main(int argc, char *argv[]){
   char *command_name, *rest;
   char *citizenID = malloc(5*sizeof(char));
   char *virusName = malloc(50*sizeof(char));
+  char *countryFrom = malloc(255*sizeof(char));
   char *writePipeBuffer = malloc(bufferSize*sizeof(char));
   while(1){
 	// Checking to see if SIGINT or SIGQUIT was received during the immediate previous operation.
@@ -287,8 +289,26 @@ int main(int argc, char *argv[]){
 			}
 			command_name = strtok_r(command, " ", &rest);
 			if(strcmp(command_name, "checkSkiplist") == 0){
-				if(sscanf(rest, "%s %s", citizenID, virusName) == 2){
-					checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd, &reqs);
+				if(sscanf(rest, "%s %s %s", citizenID, virusName, countryFrom) == 3){
+					Country *country = (Country *) find_node(country_map, countryFrom);
+					Citizen *citizen = (Citizen *) find_node(citizen_map, citizenID);
+					// One of three error cases
+					// Citizen ID doesn't exist (at least in our monitor)
+					// Citizen ID exists but countryFrom is invalid and doesn't
+					// Citizen ID exists and so does countryFrom, but it is not the
+					// citizen's actual country!
+					// If the last one wasn't caught, the checks could go through 
+					// the bloom filter with no problem.
+					if(country == NULL || citizen == NULL || citizen->country != country){
+						// Send BAD COUNTRY response to parent.
+						char *response = calloc(12, sizeof(char));
+						strcpy(response, "BAD COUNTRY");
+						write_content(response, &writePipeBuffer, writefd, bufferSize);
+						while(read(readfd, readPipeBuffer, sizeof(char)) < 0);
+						free(response);
+					}else{
+						checkSkiplist(virus_map, citizenID, virusName, bufferSize, readfd, writefd, &reqs);
+					}
 				}
 			}else if(strcmp(command_name, "checkVacc") == 0){
 				if(sscanf(rest, "%s", citizenID) == 1){

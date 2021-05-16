@@ -41,6 +41,11 @@ void add_BFtoSet(setofbloomfilters *set, int index){
 }
 
 int lookup_bf_vaccination(setofbloomfilters *set, int index, unsigned char *str){
+    // A check, in case there is a false countryFrom, or a correct one but a virus
+    // we have no records for and techinically also no bloom filter for.
+    if(set->bfs[index] == NULL){
+        return 0;
+    }
     return lookup_in_bloomFilter(set->bfs[index], str);
 }
 

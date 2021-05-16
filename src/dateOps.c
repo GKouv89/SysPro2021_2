@@ -29,11 +29,13 @@ int dateFormatValidity(char *date){
     // two different lengths to take into account
     // the second date that will have the 
     // end of line character attached to it as well
+    free(tempdate);
     return -1;
   }
   if(tempdate[2] != '-' || tempdate[5] != '-'){
     // both of these characters must be dashes, as they
     // separate day from month and month from year
+    free(tempdate);
     return -1;
   }
   char *rest;

@@ -198,7 +198,7 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRe
       char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
       char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
       char request_length, charsCopied, charsToWrite, charactersRead;
-      sprintf(request, "checkSkiplist %s %s", citizenID, virusName);
+      sprintf(request, "checkSkiplist %s %s %s", citizenID, virusName, countryName);
       write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
       memset(request, 0, 255*sizeof(char));
       read_content(&request, &pipeReadBuffer, read_file_descs[curr_country->index], bufferSize);
@@ -211,6 +211,9 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRe
         printf("REQUEST REJECTED - YOU ARE NOT VACCINATED\n");
         reqs->rejected++;
         reqs->total++;
+      }else if(strcmp(request, "BAD COUNTRY") == 0){
+        printf("REQUEST REJECTED - INVALID COUNTRYFROM ARGUMENT FOR CITIZEN %s\n", citizenID);
+        // This is NOT counted towards the overall requests, as the arguments were invalid.
       }else{
         char *answer = malloc(4*sizeof(char));
         char *date = malloc(12*sizeof(char));
