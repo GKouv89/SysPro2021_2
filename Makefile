@@ -20,4 +20,4 @@ clean_log:
 	rm -f log_file.*
 
 clean:
-	rm -f travelMonitor monitorProcess build/*
+	rm -f travelMonitor Monitor build/*
