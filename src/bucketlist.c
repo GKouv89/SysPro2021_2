@@ -155,14 +155,14 @@ void printSubdirNames(bucketList *bl, FILE *fp){
 }
 
 
-///////////////////////////////////////////////////////////////
-// The command that is called when vaccineStatus is called   //
-// without specifying the virus. Called for the list of every//
-// hash bucket, for every node of the list (every virus)     //
-// a search through the skiplist containing the vaccinated   //
-// people for the virus occurs.                              //
-// An appropriate response is forwarded to the parent.       //
-///////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+// The command that is called when searchVaccinationStatus is called  //
+// without specifying the virus. Called for the list of every         //
+// hash bucket, for every node of the list (every virus)              //
+// a search through the skiplist containing the vaccinated            //
+// people for the virus occurs.                                       //
+// An appropriate response is forwarded to the parent.                //
+////////////////////////////////////////////////////////////////////////
 
 void vacStatus_all(bucketList *bl, unsigned char *citizenID, int readfd, int writefd, int bufferSize){
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
@@ -188,34 +188,6 @@ void vacStatus_all(bucketList *bl, unsigned char *citizenID, int readfd, int wri
   free(pipeWriteBuffer);
   free(answer);
 }
-
-//////////////////////////////////////////////////////////////////////////////
-// The command that is called when popStatus or popStatusByAge is called    //
-// without specifying the country. Called for the list of every             //
-// hash bucket of the countries hashmap, for every node of the list         //
-// (every country) the function that finds the appropriate population counts//
-// and ratios for the virus is called with said country as an argument.     //
-// ageMode indicates whether popStatus or popStatusByAge is called.         //
-// Depending on that, not only the appropriate printing function is called, //
-// but the result of the skiplist population search is casted               //
-// with the correct type.                                                   //
-//////////////////////////////////////////////////////////////////////////////
-
-// void popStatus_all(bucketList *bl, int ageMode, Virus *v, char *startingDate, char *endingDate){
-//   if(bl->type == Country_List){
-//     bucketNode *temp = bl->front;
-//     while(temp){
-//       void *vacced = skiplist_vac_status_country(v->vaccinated_for, 1, ageMode, (Country *)temp->content, startingDate, endingDate);
-//       void *notVacced = skiplist_vac_status_country(v->not_vaccinated_for, 0, ageMode, (Country *)temp->content, startingDate, endingDate);
-//       if(ageMode == 0){
-//         print_vaccination_ratio((Country *)temp->content, (struct vaccinations *)vacced, (struct vaccinations *)notVacced);
-//       }else{
-//         print_vaccination_ratios_byAge((Country *)temp->content, (struct vaccinationsAgeGroup *)vacced, (struct vaccinationsAgeGroup *)notVacced);
-//       }
-//       temp = temp->next;
-//     }
-//   }
-// }
 
 void destroy_bucketList(bucketList **bl){
   bucketNode *temp = (*bl)->front;

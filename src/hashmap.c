@@ -144,19 +144,6 @@ void lookup_vacStatus_all(hashMap *map, unsigned char *citizenID, int readfd, in
   free(pipeWriteBuffer);
 }
 
-/////////////////////////////////////////////////////////////////
-// This function is called only with the countries hashmap     //
-// for the first argument. Basically searched for each country //
-// and for one specific virus, how many citizens have been     //
-// vaccinated against the virus between the two argument dates //
-/////////////////////////////////////////////////////////////////
-
-// void lookup_popStatus_all(hashMap *map, int mode, Virus *v, char *startingDate, char *endingDate){
-//   for(int i = 0; i < map->noOfBuckets; i++){
-//     popStatus_all(map->map[i]->bl, mode, v, startingDate, endingDate);
-//   }
-// }
-
 void destroy_map(hashMap **map){
   for(int i = 0; i < (*map)->noOfBuckets; i++){
     destroy_bucketList(&((*map)->map[i]->bl));

@@ -20,6 +20,5 @@ void send_bloomFilters(hashMap *, int, int, int);
 void sendCountryNamesToChild(hashMap *, int, int, int, int);
 void printSubdirectoryNames(hashMap *, FILE *);
 void lookup_vacStatus_all(hashMap *, unsigned char *, int, int, int);
-// void lookup_popStatus_all(hashMap *map, int, Virus *, char *, char *);
 void destroy_map(hashMap**);
 #endif

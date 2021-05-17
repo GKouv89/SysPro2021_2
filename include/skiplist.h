@@ -19,7 +19,6 @@ void print_skiplist(skipList *);
 void print_skiplist_citizens(skipList *);
 char* search_skip(skipList *, int, listNode *[], int *);
 listNode* lookup_skiplist(skipList *s, int);
-void* skiplist_vac_status_country(skipList *, int, int, Country *, char *, char *);
 void destroy_skiplist(skipList **);
 
 #endif

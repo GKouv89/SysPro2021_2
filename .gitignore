@@ -55,3 +55,5 @@ dkms.conf
 
 #Output files
 log_file.*
+test_dir_smol/*
+inputFile_smol.txt
