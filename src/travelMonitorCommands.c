@@ -267,29 +267,29 @@ void addVaccinationRecords(hashMap *country_map, hashMap *setOfBFs_map, char *co
   // printf("Child %d is in charge of subdirectory: %s\n", index, countryName);
   kill(children_pids[index], 10);
   // Sending directory name through pipe...
-  unsigned int countryLength = strlen(countryName);
-  char confirmation;
-  while(read(read_file_descs[index], &confirmation, sizeof(char)) < 0);
-  if(write(write_file_descs[index], &countryLength, sizeof(int)) < 0){
-    perror("write name of directory with new files");
-  }else{
-    unsigned int charsCopied = 0, charsToWrite = 0;
-    char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-    while(charsCopied < countryLength){
-      if(countryLength - charsCopied < bufferSize){
-        charsToWrite = countryLength - charsCopied;
-      }else{
-        charsToWrite = bufferSize;
-      }
-      strncpy(pipeWriteBuffer, countryName + charsCopied, charsToWrite);
-      if(write(write_file_descs[index], pipeWriteBuffer, charsToWrite*sizeof(char)) < 0 ){
-        perror("write chunk of directory with new files");
-      }else{
-        charsCopied += charsToWrite;
-      }
-    }
-    free(pipeWriteBuffer);
-  }
+  // unsigned int countryLength = strlen(countryName);
+  // char confirmation;
+  // while(read(read_file_descs[index], &confirmation, sizeof(char)) < 0);
+  // if(write(write_file_descs[index], &countryLength, sizeof(int)) < 0){
+  //   perror("write name of directory with new files");
+  // }else{
+  //   unsigned int charsCopied = 0, charsToWrite = 0;
+  //   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
+  //   while(charsCopied < countryLength){
+  //     if(countryLength - charsCopied < bufferSize){
+  //       charsToWrite = countryLength - charsCopied;
+  //     }else{
+  //       charsToWrite = bufferSize;
+  //     }
+  //     strncpy(pipeWriteBuffer, countryName + charsCopied, charsToWrite);
+  //     if(write(write_file_descs[index], pipeWriteBuffer, charsToWrite*sizeof(char)) < 0 ){
+  //       perror("write chunk of directory with new files");
+  //     }else{
+  //       charsCopied += charsToWrite;
+  //     }
+  //   }
+  //   free(pipeWriteBuffer);
+  // }
   // Now waiting to receive updated bloom filters from child.
   receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[index], write_file_descs[index], index, bufferSize, numMonitors, sizeOfBloom);
   printf("Bloom filters updated. Ready to accept more requests.\n");
