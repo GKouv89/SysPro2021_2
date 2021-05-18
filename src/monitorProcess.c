@@ -26,9 +26,10 @@ void setSigToHandle(){
 	sigToHandle = 1;
 }
 
-void checkForExit(int readfd, int writefd, char **countries, int countryIndex, requests *reqs){
+void checkForExit(char **countries, int countryIndex, requests *reqs){
 	if(sigToHandle){
-		prematureExit(readfd, writefd, countries, countryIndex, reqs);
+		printLogFile(countries, countryIndex, reqs);
+		sigToHandle = 0;
 	}
 }
 
@@ -197,7 +198,7 @@ int main(int argc, char *argv[]){
 	// as they should be included in the log file, this is the first of many periodic checks for a reception of
 	// such a signal.
 	// These checks will take place after the completion of operations; they will not interrupt them
-	checkForExit(readfd, writefd, countries, countryIndex, &reqs);
+	checkForExit(countries, countryIndex, &reqs);
 
 	// First, a hashmap for each of the following: virus, country, citizen.
 	// Arguments to inputParsing, the function that will initialize our data structures with the data.
@@ -251,7 +252,7 @@ int main(int argc, char *argv[]){
 		closedir(work_dir);
 	}
   	send_bloomFilters(virus_map, readfd, writefd, bufferSize);
-	checkForExit(readfd, writefd, countries, countryIndex, &reqs);
+	checkForExit(countries, countryIndex, &reqs);
 
 	unsigned int commandLength, charactersCopied, charsToWrite;
 	char *command = calloc(255, sizeof(char));
@@ -262,7 +263,7 @@ int main(int argc, char *argv[]){
 	char *writePipeBuffer = malloc(bufferSize*sizeof(char));
 	while(1){
 		// Checking to see if SIGINT or SIGQUIT was received during the immediate previous operation.
-		checkForExit(readfd, writefd, countries, countryIndex, &reqs);
+		checkForExit(countries, countryIndex, &reqs);
 		// Checking to see if SIGUSR1 was received during the immediate previous operation.
 		newFilesAvailable(country_map, citizen_map, virus_map, readfd, writefd, bufferSize, sizeOfBloom, countries[0]);
 
@@ -270,7 +271,7 @@ int main(int argc, char *argv[]){
 		FD_SET(readfd, &rd);
 		if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1 && errno == EINTR){
 			// Checking to see if SIGINT or SIGQUIT was received while waiting for a request.
-			checkForExit(readfd, writefd, countries, countryIndex, &reqs);
+			checkForExit(countries, countryIndex, &reqs);
 			// perror("select child while waiting for command");
 			// Checking to see if SIGUSR1 was received while waiting for a request.
 			newFilesAvailable(country_map, citizen_map, virus_map, readfd, writefd, bufferSize, sizeOfBloom, countries[0]);
