@@ -21,6 +21,9 @@ int isEqual_country(Country *c, unsigned char *str){
   }
 }
 
+// Used to increment the counter of files read in
+// a specific country's directory.
+
 void readCountryFile(Country *c){
   c->maxFile++;
 }

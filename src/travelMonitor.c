@@ -54,13 +54,14 @@ void hasReceivedInterrupt(struct sigaction *act, int numMonitors, pid_t *childre
 }
 
 int main(int argc, char *argv[]){
-	// Setting everything up for abrupt exit of child through SIGINT/SIGQUIT via terminal, and the parent's
+	// Setting everything up for abrupt death of child via terminal, and the parent's
 	// responsibility to spawn another one.
 	static struct sigaction act;
 	act.sa_handler=childExited;
 	sigfillset(&(act.sa_mask));
 	sigaction(SIGCHLD, &act, NULL);
 	
+	// Setting everything up for reception of interrupt and killing of all children.
 	static struct sigaction interquit;
 	interquit.sa_handler=receiveInterrupt;
 	sigfillset(&(interquit.sa_mask));
@@ -99,15 +100,11 @@ int main(int argc, char *argv[]){
 	int *read_file_descs = malloc(numMonitors*sizeof(int));
 	for(i = 1; i <= numMonitors; i++){
 		// Making the pipes 
-		// Then, each child that will be exec'd
-		// will receive the number of the pair of pipes
-		// to open as an argument
 		sprintf(pipe_name, "/tmp/%dr", i);
 		if(mkfifo(pipe_name, 0666) < 0){
 			fprintf(stderr, "errno: %d\n", errno);
 			perror("mkfifo");
 		}
-		// printf("About to make pipe for reading\n");
 		read_file_descs[i-1] = open(pipe_name, O_RDONLY | O_NONBLOCK);
 		if(read_file_descs[i-1] < 0){
 			perror("open read pipe");
@@ -120,9 +117,6 @@ int main(int argc, char *argv[]){
 	}
 	pid_t pid;
 	// Creating monitor processes and passing them their arguments
-	// Their id number, that will be used for quick reference to one after
-	// we have queried its bloom filter and we wish to query its skiplist,
-	// the bufferSizeArgument, and the pipes for communication.
 	// readPipe is the pipe from which the parent reads and the monitor writes to.
 	// writePipe is the pipe for the opposite direction of communication.
   	pid_t *children_pids = malloc(numMonitors*sizeof(int));
@@ -152,7 +146,7 @@ int main(int argc, char *argv[]){
 	char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
 	unsigned int charsCopied;
 	unsigned int countryLength = 0;
-	// Opening pipes created from monitors where parent will write
+	// Opening pipes that have already been opened from monitors where parent will write
 	// the countries each monitor will process.
 	for(i = 1; i <= numMonitors; i++){
 		sprintf(pipe_name, "/tmp/%dw", i);
@@ -160,6 +154,8 @@ int main(int argc, char *argv[]){
 		if(write_file_descs[i-1] < 0){
 			perror("open write pipe");
 		}else{
+			// passing arguments parent received from the command line, a.k.a. passing
+			// buffer size and size of bloom filter through the pipes, as well as the name/path to the input_dir
 			passCommandLineArgs(read_file_descs[i-1], write_file_descs[i-1], bufferSize, sizeOfBloom, input_dir);
 		}
 	}
@@ -201,6 +197,7 @@ int main(int argc, char *argv[]){
 		roundRobin++;
 		roundRobin = roundRobin % numMonitors;
 	}
+	// Informing all children that they will receive no other directory names.
 	char *endOfMessage = "END";
 	for(i = 1; i <= numMonitors; i++){
 		FD_ZERO(&rd);
@@ -227,7 +224,7 @@ int main(int argc, char *argv[]){
 		}
 	}
 	// Creating lookup table for countries.
-	// Each virus will hold multiple bloomfilters and we must know which one
+	// Each virus will correspond to  multiple bloomfilters and we must know which one
 	// is about the country in question. Each country will hold a payload, the result
 	// of the operation (index in alphabeticOrder) % numMonitors + 1. This is the
 	// number of the bloom filter in question.
@@ -250,8 +247,8 @@ int main(int argc, char *argv[]){
 	hashMap *setOfBFs_map;
 	create_map(&setOfBFs_map, 3, BFLookup_List);
 	setofbloomfilters *curr_set;
-	// This array shows from which monitors we have NOT received
-	// their bloomfilters yet. When we receive the bloom filters of one monitor,
+	// This array shows which monitors we have YET to receive
+	// bloomfilters from. When we receive the bloom filters of one monitor,
 	// the respective element in this array takes the value zero.
 	int *read_bloom_descs = malloc(numMonitors*sizeof(int));
 	FD_ZERO(&rd);
@@ -266,19 +263,20 @@ int main(int argc, char *argv[]){
 		if(select(max, &rd, NULL, NULL, NULL) == -1){
 			perror("select virus names");
 		}else{
+			// Perhaps more than one file descriptors are ready to send data to parent,
+			// in the case two monitors have roughly the same amount of work to do.
 			for(int k = 0; k < numMonitors; k++){
 				if(read_bloom_descs[k] == 1 && FD_ISSET(read_file_descs[k], &rd)){
-					// We will now read from the monitor process no. i
-					// printf("About to receive faux bloom filters from monitor %d\n", k);
-					// Reading...
-					// printf("Receiving from monitor %d\n", k);
+					// We will now read from the monitor process no. k
 					receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[k], write_file_descs[k], k, bufferSize, numMonitors, sizeOfBloom);
+					// Increasing number of children we have received filters from
 					i++;
-					// After reading, we must reinitialize the set of file descs
-					// that we expect 'traffic' from.
+					// We don't expect any more 'traffic' from this child.
 					read_bloom_descs[k] = 0;
 				}
 			}
+			// After reading from all children that were ready in this rep, we must reinitialize the set of file descs
+			// that we expect 'traffic' from.
 			max = 0;
 			FD_ZERO(&rd);
 			for(int j = 0; j < numMonitors; j++){
@@ -293,10 +291,9 @@ int main(int argc, char *argv[]){
 		}
 	}
 	free(read_bloom_descs);
-	// Since we assume that SIGINT/SIGQUIT will be sent to a child process after it has been sent the file directories,
-	// and it has processed the bloomfilters, the first of periodic checks for a child that has quit will take place here.
+	// Since we assume that a child could abruptly die after it has been sent the file directories,
+	// and it has processed the bloomfilters, the first of periodic checks for a child that has died will take place here.
 	hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);
-
 
 	hashMap *virusRequest_map;
 	create_map(&virusRequest_map, 3, VirusRequest_List);
@@ -312,6 +309,7 @@ int main(int argc, char *argv[]){
 	FD_SET(0, &standin);
 	printf("Ready to accept commands.\n");
 	while(1){
+		// Checking to see if a SIGINT/SIGQUIT interrupt was received during previous operation.
 		hasReceivedInterrupt(&act, numMonitors, children_pids, country_map, setOfBFs_map, virusRequest_map, &reqs, read_file_descs, write_file_descs, pipe_name, command, dateOfTravel, citizenID, countryName, countryTo, virusName, pipeReadBuffer, pipeWriteBuffer, input_dir);
 		// Checking if the SIGCHLD signal was received during the previous operation with another monitor.
 		hasChildExited(country_map, setOfBFs_map, &(children_pids), read_file_descs, write_file_descs, numMonitors, bufferSize, sizeOfBloom, input_dir);    

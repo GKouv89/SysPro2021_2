@@ -44,6 +44,7 @@ void send_bloomFilters(hashMap *map, int readfd, int writefd, int bufferSize){
     for(int i = 0; i < map->noOfBuckets; i++){
       send_virus_Bloomfilters(map->map[i]->bl, readfd, writefd, bufferSize);
     }
+    // No more filters to send
     char *endStr = "END";
     unsigned int charsCopied, endStrLen = 3;
     char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
@@ -61,6 +62,10 @@ void send_bloomFilters(hashMap *map, int readfd, int writefd, int bufferSize){
     }
     free(pipeWriteBuffer);
 }
+
+// This function is only called with the country map as a first argument, and only when about to respawn a child.
+// The bucket lists of the parent are traversed, and every country whose index matches the index of the child
+// that died abruptly, is added to the ctounries array, and then they're all sent to the new child.
 
 void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSize, int monitorIndex){
   char **countries = malloc(250*sizeof(char *));
@@ -92,6 +97,7 @@ void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSi
       while(read(readfd, pipeReadBuffer, bufferSize) < 0);
     }
   }
+  // NO more countries to send
   char *endStr = "END";
   unsigned int endStrLen = 3;
   if(write(writefd, &endStrLen, sizeof(int)) < 0){
@@ -118,6 +124,8 @@ void sendCountryNamesToChild(hashMap *map, int readfd, int writefd, int bufferSi
   }
   free(countries);
 }
+
+// Used in log file creation.
 
 void printSubdirectoryNames(hashMap *map, FILE *fp){
   for(int i = 0; i < map->noOfBuckets; i++){

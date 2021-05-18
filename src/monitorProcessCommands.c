@@ -60,6 +60,7 @@ void checkVacc(hashMap *citizen_map, hashMap *virus_map, char *citizenID, int re
   write_content(citizenData, &pipeWriteBuffer, writefd, bufferSize);
   char confirmation;
   while(read(readfd, &confirmation, sizeof(char)) < 0);
+  // All viruses in the virus map check whether the citizen with this ID is in their skiplist and notify the parent.
   lookup_vacStatus_all(virus_map, citizenID, readfd, writefd, bufferSize);
   free(citizenData);
   free(pipeWriteBuffer);
@@ -67,8 +68,8 @@ void checkVacc(hashMap *citizen_map, hashMap *virus_map, char *citizenID, int re
 
 void printLogFile(char **countries, int countryIndex, requests *reqs){
   // Create log file of current process 
-  // if this child has been killed again 
-  // the file will get replaced
+  // if this child received SIGINT/SIGQUIT more than once 
+  // the file will get replaced each time
 	pid_t mypid = getpid();
   char *logFileName = malloc(20*sizeof(char));
   sprintf(logFileName, "log_file.%d", mypid);

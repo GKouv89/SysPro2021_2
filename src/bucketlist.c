@@ -99,7 +99,8 @@ void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int buffer
           bf = ((Virus *)temp->content)->virusBF;
           bytesTransferred = 0;
           bfSize = (bf->size)/8;
-          // At first, just COPYING the filter chunk by chunk to the buffer
+          // Now, since bloom filter size is known, no size is sent from child, just
+          // the bufferSize chunks of the filter.
           while(bytesTransferred < bfSize){
             if(bfSize - bytesTransferred < bufferSize){
               charsToWrite = bfSize - bytesTransferred;
@@ -108,7 +109,6 @@ void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int buffer
             }
             memcpy(pipeWriteBuffer, bf->filter + bytesTransferred, charsToWrite*sizeof(char));
             bytesTransferred += charsToWrite;
-            // printf("bytesTransferred: %d\n", bytesTransferred);
             if(write(writefd, pipeWriteBuffer, charsToWrite*sizeof(char)) < 0){
               perror("write bf chunk\n");
             }
@@ -125,7 +125,7 @@ void send_virus_Bloomfilters(bucketList *bl, int readfd, int writefd, int buffer
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // This function is called after one of the children was killed and the parent                //
 // spawns a new child in its place. It is checked which country was processed by the old child//
-// and those are communicate to the new child.                                                //
+// and those are communicated to the new child.                                               //
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 void findCountriesForChild(bucketList *bl, char ***countries, int *countryIndex, int monitorIndex){
@@ -143,6 +143,8 @@ void findCountriesForChild(bucketList *bl, char ***countries, int *countryIndex,
     }
   }
 }
+
+// Used in log file creation.
 
 void printSubdirNames(bucketList *bl, FILE *fp){
   if(bl->type == Country_List){

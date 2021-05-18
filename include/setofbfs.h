@@ -7,10 +7,12 @@ typedef struct setofbfs{
     char *virusName;
     // An array of bloomfilters on virusName, used for lookup.
     // Each index corresponds to a monitor, a.k.a.
-    // the virusBF[0] contains the filter for the countries
-    // handled by monitorProcess 0, and so forth.
-    int capacity;
-    int sizeOfBloom;
+    // bfs[0] contains the filter for the countries
+    // handled by monitorProcess 0 for this virus, and so forth.
+    int capacity; // how many bloom filters could be, granted that every child has records on this virus
+    // this is why we initialize the elements of the bfs array as NULL; maybe a child doesn't have a bloom filter for this
+    // virus, but in any case the array has size equal to the value of capacity.
+    int sizeOfBloom; // same for all filters
     bloomFilter **bfs;
 } setofbloomfilters;
 

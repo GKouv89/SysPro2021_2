@@ -26,7 +26,7 @@ void setSigToHandle(){
 	sigToHandle = 1;
 }
 
-void checkForExit(char **countries, int countryIndex, requests *reqs){
+void checkForLogFile(char **countries, int countryIndex, requests *reqs){
 	if(sigToHandle){
 		printLogFile(countries, countryIndex, reqs);
 		sigToHandle = 0;
@@ -68,23 +68,19 @@ void newFilesAvailable(hashMap *country_map, hashMap *citizen_map, hashMap *viru
 }
 
 int main(int argc, char *argv[]){
-	// Setting everything up for abrupt exit of child through SIGINT/SIGQUIT via terminal...
+	// Setting everything up for notification to print log file in the form of SIGINT/SIGQUIT via terminal...
 	static struct sigaction act;
 	act.sa_handler=setSigToHandle;
 	sigfillset(&(act.sa_mask));
 	sigaction(SIGINT, &act, NULL);
 	sigaction(SIGQUIT, &act, NULL);
 
+	// Setting everything up for notification for new files in any of the directories this monitor is in charge of.
 	static struct sigaction newFilesToRead;
 	newFilesToRead.sa_handler=toReadNewFiles;
 	sigfillset(&(newFilesToRead.sa_mask));
 	sigaction(SIGUSR1, &newFilesToRead, NULL);
 	requests reqs = {0, 0, 0};
-
-	// Arguments passed through exec:
-	// An ID number: it's the number of the monitor process
-	// from the parent's perspective. Needed so the monitor
-	// know which pipes/Xw to write, where X is said number
 
 	// Open the appropriate pipe for current process to read and parent process to write.
 	char *writePipeName = malloc(11*sizeof(char));
@@ -121,7 +117,7 @@ int main(int argc, char *argv[]){
 		}
 	}
 	// About to read country names that this monitor will process
-	// If there are more, we will resize the array.
+	// If there are more than 10, we will resize the array.
 	char **countries;
 	int countryIndex = 0;
 	int countriesLength = 10;
@@ -136,16 +132,15 @@ int main(int argc, char *argv[]){
 	char *readPipeBuffer = malloc(bufferSize*sizeof(char));
 	while(!done){
 		// Send confirmation to parent that
-		// either the bufferSize was received OK and therefore
+		// either the sizeOfBloom was received OK and therefore
 		// parent can send first country name or
-		// latest country name was received OK and therefore
+		// latest directory name was received OK and therefore
 		// parent can send the next one.
 		// The first country name truly received is the input_dir directory's name
-		// necessary in order to have the full path to the subdirectories.
 		if(write(writefd, "1", sizeof(char)) < 0){
 			perror("confirmation write");
 		}
-		// First thing read is the length of the first country name. 
+		// First thing read is the length of the string to be received. 
 		if(select(readfd+1, &rd, NULL, NULL, NULL) == -1){
 			perror("country length select");
 			done = 1;
@@ -184,11 +179,11 @@ int main(int argc, char *argv[]){
 			}
 		}	
 	}
-	// Making the assumption that the SIGINT/SIGQUIT will be received AFTER the country names have been received,
+	// Making the assumption that the SIGINT/SIGQUIT could be received only AFTER the country names have been received,
 	// as they should be included in the log file, this is the first of many periodic checks for a reception of
 	// such a signal.
 	// These checks will take place after the completion of operations; they will not interrupt them
-	checkForExit(countries, countryIndex, &reqs);
+	checkForLogFile(countries, countryIndex, &reqs);
 
 	// First, a hashmap for each of the following: virus, country, citizen.
 	// Arguments to inputParsing, the function that will initialize our data structures with the data.
@@ -203,8 +198,8 @@ int main(int argc, char *argv[]){
 	// smaller than the size of the respective file
 	// for citizens, perhaps the input file will have few lines,
 	// but perhaps it will have upwards of 1000 records.
-	// In any case, this allows for insertion of multiple records
-	// after reading the input file
+	// In any case, this allows for insertion of more records
+	// in case of more input files.
 	create_map(&country_map, 43, Country_List);
 	create_map(&virus_map, 3, Virus_List);
 	create_map(&citizen_map, 101, Citizen_List);
@@ -217,6 +212,7 @@ int main(int argc, char *argv[]){
 	FILE *curr_file;
 	Country *country;
 	for(i = 1; i < countryIndex; i++){
+		// Creating path to next file
 		strcpy(working_dir, countries[0]);
 		strcat(working_dir, "/");
 		strcat(working_dir, countries[i]);
@@ -242,7 +238,7 @@ int main(int argc, char *argv[]){
 		closedir(work_dir);
 	}
   	send_bloomFilters(virus_map, readfd, writefd, bufferSize);
-	checkForExit(countries, countryIndex, &reqs);
+	checkForLogFile(countries, countryIndex, &reqs);
 
 	unsigned int commandLength, charactersCopied, charsToWrite;
 	char *command = calloc(255, sizeof(char));
@@ -253,14 +249,14 @@ int main(int argc, char *argv[]){
 	char *writePipeBuffer = malloc(bufferSize*sizeof(char));
 	while(1){
 		// Checking to see if SIGINT or SIGQUIT was received during the immediate previous operation.
-		checkForExit(countries, countryIndex, &reqs);
+		checkForLogFile(countries, countryIndex, &reqs);
 		// Checking to see if SIGUSR1 was received during the immediate previous operation.
 		newFilesAvailable(country_map, citizen_map, virus_map, readfd, writefd, bufferSize, sizeOfBloom, countries[0], countries, countryIndex);
 		FD_ZERO(&rd);
 		FD_SET(readfd, &rd);
 		if(select(readfd + 1, &rd, NULL, NULL, NULL) < 1 && errno == EINTR){
 			// Checking to see if SIGINT or SIGQUIT was received while waiting for a request.
-			checkForExit(countries, countryIndex, &reqs);
+			checkForLogFile(countries, countryIndex, &reqs);
 			// perror("select child while waiting for command");
 			// Checking to see if SIGUSR1 was received while waiting for a request.
 			newFilesAvailable(country_map, citizen_map, virus_map, readfd, writefd, bufferSize, sizeOfBloom, countries[0], countries, countryIndex);
@@ -284,12 +280,12 @@ int main(int argc, char *argv[]){
 							Country *country = (Country *) find_node(country_map, countryFrom);
 							Citizen *citizen = (Citizen *) find_node(citizen_map, citizenID);
 							// One of three error cases
-							// Citizen ID doesn't exist (at least in our monitor)
+							// Citizen ID doesn't exist (at least in this monitor)
 							// Citizen ID exists but countryFrom is invalid and doesn't
 							// Citizen ID exists and so does countryFrom, but it is not the
 							// citizen's actual country!
 							// If the last one wasn't caught, the checks could go through 
-							// the bloom filter with no problem.
+							// the bloom filter/skiplist with no problem.
 							if(country == NULL || citizen == NULL || citizen->country != country){
 								// Send BAD COUNTRY response to parent.
 								char *response = calloc(12, sizeof(char));
@@ -311,26 +307,5 @@ int main(int argc, char *argv[]){
 			}
 		}
 	}
-
-	// Releasing resources...
-	// for(i = 0; i < countriesLength; i++){
-		// free(countries[i]);
-		// countries[i] = NULL;
-	// }
-
-	// free(countries);
-	// close(writefd);
-	// close(readfd);
-	// free(logFileName);
-	// free(writePipeName);
-	// free(readPipeName);	
-	// free(writePipeBuffer);
-	// free(readPipeBuffer);
-	// free(full_file_name);
-	// free(working_dir);
-	// destroy_map(&country_map);
-	// destroy_map(&citizen_map);
-	// destroy_map(&virus_map);
-	// printf("Exiting...\n");
 	return 0;
 }

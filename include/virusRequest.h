@@ -3,6 +3,10 @@
 
 #include "requests.h"
 
+// A vector of sorts that holds entities of type namedRequests
+// when a travelRequest is about a specific date, countryTo and about this virus,
+// an element is added to the array.
+
 typedef struct virreq{
     char *virusName;
     namedRequests **requests;

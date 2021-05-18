@@ -35,7 +35,7 @@ void passCommandLineArgs(int readfd, int writefd, int bufferSize, int sizeOfBloo
     while(read(readfd, pipeReadBuffer, bufferSize) < 0);
     // Letting monitors know input_dir's length and then name,
     // so they have the full path to their subdirectories.
-    inputDirLength = strlen(input_dir); // Not an actual country yet.
+    inputDirLength = strlen(input_dir); 
     if(write(writefd, &inputDirLength, sizeof(int)) < 0){
       perror("write input_dir length");
     }else{
@@ -66,7 +66,6 @@ void receiveBloomFiltersFromChild(hashMap *setOfBFs_map, int readfd, int writefd
   setofbloomfilters *curr_set;
   while(1){
     if(read(readfd, &dataLength, sizeof(int)) < 0){
-      // perror("read virus name length");
       continue;
     }else{
       charactersParsed = 0;
@@ -81,11 +80,12 @@ void receiveBloomFiltersFromChild(hashMap *setOfBFs_map, int readfd, int writefd
         }		
       }
       if(strcmp(virusName, "END") == 0){
+        // no more bloom filters from this child.
         break;
       }else{
-        // printf("Received faux bloom filter for Virus %s from monitor %d\n", virusName, k);
         curr_set = (setofbloomfilters *) find_node(setOfBFs_map, virusName);
         if(curr_set == NULL){
+          // completely new virus to parent
           create_setOfBFs(&curr_set, virusName, numMonitors, sizeOfBloom);
           add_BFtoSet(curr_set, index);
           insert(setOfBFs_map, virusName, curr_set);
@@ -95,6 +95,7 @@ void receiveBloomFiltersFromChild(hashMap *setOfBFs_map, int readfd, int writefd
         if(write(writefd, "1", sizeof(char)) < 0){
           perror("write confirmation after receiving virus name");
         }
+        // Reading actual array/filter
         read_BF(curr_set, readfd, writefd, index, bufferSize);
         memset(virusName, 0, 255*sizeof(char));
       }
@@ -116,7 +117,7 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
     }
   }
   assert(index != -1);
-  /* Close pipes and reopen to see if SIGPIPE will be avoided. */
+  /* Close pipes and reopen to avoid SIGPIPE. */
   close(read_file_descs[index]);
   close(write_file_descs[index]);
 
@@ -142,7 +143,6 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
     }
   }else{
     (*children_pids)[index] = pid;
-    // printf("New child: %d\n", (*children_pids)[index]);
   }
   /* Reopening writing pipe */
   write_file_descs[index] = open(writePipe, O_WRONLY);
@@ -150,7 +150,7 @@ void childReplacement(hashMap *country_map, hashMap *setOfBFs_map, pid_t oldChil
     perror("open write pipe");
   }
   
-  /* Pass arguments (sizeOfBloom, bufferSize) to child  */
+  /* Pass arguments (sizeOfBloom, bufferSize, input_dir) to child  */
   passCommandLineArgs(read_file_descs[index], write_file_descs[index], bufferSize, sizeOfBloom, input_dir);
   char conf;
   while(read(read_file_descs[index], &conf, sizeof(char)) < 0);
@@ -181,7 +181,7 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRe
       create_virusRequest(&vr, virusName);
       insert(virusRequest_map, virusName, vr);
     }
-    // Now that we definitely have a virusRequest, let's see if there has been any
+    // Now that we definitely have a virusRequest, let's see if there have been any
     // other requests for travel to the same country on the same date. If not, 
     // let's create a namedRequest. addRequest does both the check and (if needed) the creation.
     namedRequests *nreq = addRequest(vr, countryTo, dateOfTravel);
@@ -197,8 +197,10 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRe
       char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
       unsigned int request_length;
       sprintf(request, "checkSkiplist %s %s %s", citizenID, virusName, countryName);
+      // sending request to child 
       write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
       memset(request, 0, 1024*sizeof(char));
+      // reading response from child
       read_content(&request, &pipeReadBuffer, read_file_descs[curr_country->index], bufferSize);
       // Send confirmation of answer reception.
       if(write(write_file_descs[curr_country->index], "1", sizeof(char)) < 0){
@@ -217,16 +219,19 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRe
         char *date = malloc(12*sizeof(char));
         sscanf(request, "%s %s", answer, date);
         memset(request, 0, 1024*sizeof(char));
+        // Parent will now check if the day of the trip was withing six months of the date of vaccination
         switch(dateDiff(dateOfTravel, date)){
           case -1: printf("ERROR - TRAVEL DATE BEFORE VACCINATION DATE\n");
               strcpy(request, "REJECT");
+              // letting child know that request was rejected
               write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
               rejectNamedRequest(nreq);
               reqs->rejected++;
               reqs->total++;
               break;
           case 0: printf("REQUEST ACCEPTED – HAPPY TRAVELS\n");
-              strcpy(request, "ACCEPT");
+              strcpy(request, "ACCEPT");  
+              // letting child know that request was accepted
               write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
               acceptNamedRequest(nreq);
               reqs->accepted++;
@@ -234,6 +239,7 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRe
               break;
           case 1: printf("REQUEST REJECTED – YOU WILL NEED ANOTHER VACCINATION BEFORE TRAVEL DATE\n");
               strcpy(request, "REJECT");
+              // letting child know that request was rejected
               write_content(request, &pipeWriteBuffer, write_file_descs[curr_country->index], bufferSize);
               rejectNamedRequest(nreq);
               reqs->rejected++;
@@ -249,6 +255,7 @@ void travelRequest(hashMap *setOfBFs_map, hashMap *country_map, hashMap *virusRe
       free(pipeReadBuffer);
       free(pipeWriteBuffer);
     }else{
+      // Just rejecting the request, no need to ask the child
       rejectNamedRequest(nreq);
       reqs->rejected++;
       reqs->total++;
@@ -263,36 +270,12 @@ void addVaccinationRecords(hashMap *country_map, hashMap *setOfBFs_map, char *co
     printf("No such country: %s\n", countryName);
     return;
   }
+  // Finding country responsible for countryName
   int index = country->index;
-  // printf("Child %d is in charge of subdirectory: %s\n", index, countryName);
   kill(children_pids[index], 10);
-  // Sending directory name through pipe...
-  // unsigned int countryLength = strlen(countryName);
-  // char confirmation;
-  // while(read(read_file_descs[index], &confirmation, sizeof(char)) < 0);
-  // if(write(write_file_descs[index], &countryLength, sizeof(int)) < 0){
-  //   perror("write name of directory with new files");
-  // }else{
-  //   unsigned int charsCopied = 0, charsToWrite = 0;
-  //   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
-  //   while(charsCopied < countryLength){
-  //     if(countryLength - charsCopied < bufferSize){
-  //       charsToWrite = countryLength - charsCopied;
-  //     }else{
-  //       charsToWrite = bufferSize;
-  //     }
-  //     strncpy(pipeWriteBuffer, countryName + charsCopied, charsToWrite);
-  //     if(write(write_file_descs[index], pipeWriteBuffer, charsToWrite*sizeof(char)) < 0 ){
-  //       perror("write chunk of directory with new files");
-  //     }else{
-  //       charsCopied += charsToWrite;
-  //     }
-  //   }
-  //   free(pipeWriteBuffer);
-  // }
   // Now waiting to receive updated bloom filters from child.
   receiveBloomFiltersFromChild(setOfBFs_map, read_file_descs[index], write_file_descs[index], index, bufferSize, numMonitors, sizeOfBloom);
-  printf("Bloom filters updated. Ready to accept more requests.\n");
+  printf("Ready to accept more requests.\n");
 }
 
 void noMoreCommands(struct sigaction *act, int numMonitors, pid_t *children_pids, hashMap *country_map, requests *reqs){
@@ -302,10 +285,7 @@ void noMoreCommands(struct sigaction *act, int numMonitors, pid_t *children_pids
   for(i = 0; i < numMonitors; i++){
     kill(children_pids[i], 9);
   }
-  // waiting for children to exit...
-  // printf("About to wait for my kids...\n");
   for(i = 1; i <= numMonitors; i++){
-    printf("Waiting for kid no %d\n", i);
     if(wait(NULL) == -1){
       perror("wait");
       exit(1);
@@ -328,6 +308,7 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
   char *command = malloc(15*sizeof(char));
   char *pipeWriteBuffer = malloc(bufferSize*sizeof(char));
   char confirmation;
+  // Sending a request to ALL monitors
   sprintf(command, "checkVacc %s", citizenID);
   commandLength = strlen(command);
   int i;
@@ -352,6 +333,11 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
     }
   }
 
+  // Initializing set of file descriptors. 
+  // The monitor that will actually have the citizen will take longer to respond,
+  // so with select we can have the others that will respond negatively out of the way first.
+  // When the monitor with the citizen is identified, the parent will block until that specific
+  // file descriptor has a new line for the parent to print, until there are no more lines (for this reason, rd_specific is used).
   fd_set rd, rd_specific;
   int *valid_read_file_descs = malloc(numMonitors*sizeof(int));
   int max = 0;
@@ -371,6 +357,9 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
   char *pipeReadBuffer = malloc(bufferSize*sizeof(char));
   char *ans = malloc(4*sizeof(char));
   char *date = malloc(11*sizeof(char));
+  // if a negative answer is received from all monitors,
+  // this remains 0 and the user is notified via the parent.
+  // if not, this gets 1 assigned.
   int citizenFound = 0;
   for(i = 0; i < numMonitors; ){
     if(select(max, &rd, NULL, NULL, NULL) == -1){
@@ -379,6 +368,7 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
       for(int j = 0; j < numMonitors; j++){
         if(valid_read_file_descs[j] == 1 && FD_ISSET(read_file_descs[j], &rd)){
           read_content(&citizenData, &pipeReadBuffer, read_file_descs[j], bufferSize);
+          // Negative answer
           if(strcmp(citizenData, "NO SUCH CITIZEN") == 0){
             memset(citizenData, 0, 255*sizeof(char));  
           }else{
@@ -388,6 +378,7 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
             }
             while(1){
               read_content(&virus, &pipeReadBuffer, read_file_descs[j], bufferSize);
+              // No more viruses the child has info on
               if(strcmp(virus, "END") == 0){
                 break;
               }
@@ -423,7 +414,7 @@ void searchVaccinationStatus(int *read_file_descs, int *write_file_descs, int nu
         }
       }
       // Response will be received from ALL monitors. At most one will have a valid answer.
-      // In any case, we must reset the set of file_descriptors we expect traffic from.     
+      // In any case, we must reset the set of file_descriptors we expect 'traffic' from.     
       max=0;
       FD_ZERO(&rd);
       for(int k = 0; k < numMonitors; k++){

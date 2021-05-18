@@ -29,7 +29,6 @@ void add_BFtoSet(setofbloomfilters *set, int index){
     // when select chooses a child to receive the filter from,
     // the index is the same as the index of the pipe's file descriptor
     // in the read and write file descriptor arrays of the parent.
-    // assert(set->bfs[index] == NULL);
     if(set->bfs[index] != NULL){
         // in this case, the filter is being replaced, either by 
         // an update in the subdirectories of a child process, or
@@ -56,7 +55,6 @@ void read_BF(setofbloomfilters *set, int readfd, int writefd, int index, int buf
     unsigned int bytesParsed = 0;
     int sizeOfBloom = (set->bfs[index]->size)/8;
     while(bytesParsed < sizeOfBloom){
-        // printf("bytesParsed: %d\n", bytesParsed);
         if((bytesRead = read(readfd, pipeReadBuffer, bufferSize*sizeof(char))) < 0){
             // This just means that the child process hasn't written the next chunk yet, but will soon.
             continue;

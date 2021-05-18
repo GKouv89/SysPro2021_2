@@ -41,6 +41,7 @@ int compare_citizens(Citizen *c1, Citizen *c2){
   return 1;
 }
 
+// Prints citizen's data to a buffer when searchVaccinationStatus is called to be sent to the parent.
 void print_citizen(Citizen *c, char **citizen_buffer){
   sprintf(*citizen_buffer, "%s %s %s %s\nAGE %d\n", c->id, c->firstName, c->lastName, c->country->name, c->age);
 }

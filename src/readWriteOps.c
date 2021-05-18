@@ -3,6 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 
+// General functionality of read and write over the pipes.
+// Writing the length of the content, and then the content itself in chunks of bufferSize bytes,
+// or less, if there are fewer remaining, and then waiting for confirmation from the opposite end.
 
 void read_content(char **info_buffer, char **reading_buffer, int readfd, int bufferSize){
     unsigned int contentLength;

@@ -29,6 +29,9 @@ void resize_virusRequest(virusRequest *vr){
     vr->requests = temp;
 }
 
+// Checks to see if a named request exists. If not, it is created. In both cases,
+// a pointer is returned, as we will most likely need to accept or reject it.
+
 namedRequests* addRequest(virusRequest *vr, char *countryTo, char *date){
     namedRequests *nreq;
     if((nreq = findRequest(vr, countryTo, date)) != NULL)
@@ -51,6 +54,11 @@ namedRequests* findRequest(virusRequest *vr, char *countryTo, char *date){
     }
     return NULL;
 }
+
+// Mode == 1: we care for a specific countryTo. Traversing the vector, taking into account
+// only the requests about this specific country, we sum the total, accepted and rejected requests
+// for the parent to print out after /travelStats was issued in a specific date range.
+// Mode == 0: All requests are aggregated, no matter the country. 
 
 void gatherStatistics(virusRequest *vr, char *date1, char *date2, char *countryTo, int mode, requests *reqs){
     for(int i = 0; i < vr->length; i++){

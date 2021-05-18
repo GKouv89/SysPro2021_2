@@ -8,13 +8,13 @@ typedef struct req{
 }requests;
 
 // This is the entity used in travelStats.
-// It refers to a request done for travel on date to a country that check for vaccinations against virusName.
-// Each time a request is made for a virus, a virus is either added to the parent's hashMap of viruses
+// It refers to a request done for travel on date to a country.
+// Each time a request is made for a virus, a virusRequest is either added to the parent's respective hashmap
 // and this request is added to its array of named requests, or simply the request is added.
-// But since multiple requests for this virus could have taken place on this day, we note how many these were,
+// But since there could be multiple requests for travel on the same date for this virus, we note how many these were,
 // how many were accepted and rejected.
-// So, when the statistics request comes in, the specific virus is found, and
-// if we care about the country, compare the countryTo field first to said specific country,
+// So, when the statistics request comes in, the specific virusRequest is found, and
+// if we care about the country, we compare the countryTo field first to said country,
 // otherwise just check whether date is in range, and if so add its accepted/rejected/totalRequests
 // to the ones being aggregated currently. 
 

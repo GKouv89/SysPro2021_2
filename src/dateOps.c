@@ -118,7 +118,7 @@ int dateComparison(char *date1, char *date2){
 // Returns 0 if it's okay to travel.//
 // 1 if it is will be more  than    //
 // six months by the time of travel.//
-// -1 if travel date is after       //
+// -1 if travel date is before      //
 // vaccination date.                //
 //////////////////////////////////////
 
