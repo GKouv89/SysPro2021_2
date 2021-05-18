@@ -3,8 +3,6 @@ COMMON = build/hashmap.o build/bucketlist.o build/requests.o build/virusRequest.
 MONITOROBJ = build/inputParsing.o  build/monitorProcessCommands.o
 LINK = -lm
 
-TESTEXECS = testsetofbfs testBloomFilter testDateDiff testVirusRequest
-
 all: travelMonitor Monitor
 
 build/%.o: src/%.c
@@ -16,41 +14,10 @@ travelMonitor: build/travelMonitor.o $(COMMON)
 Monitor: build/monitorProcess.o $(COMMON) $(MONITOROBJ)
 	gcc -o $@ $^ $(LINK)
 
-testbuild/%.o: test/%.c
-	gcc $(FLAGS) $< -o $@
-
-testDateDiff: testbuild/testDateDiff.o build/dateOps.o
-	gcc -o $@ $^
-
-testsetofbfs: testbuild/testsetofbfs.o $(COMMON) $(MONITOROBJ) 
-	gcc -o $@ $^ $(LINK)
-
-testBloomFilter: testbuild/testBloomFilter.o build/bloomfilter.o
-	gcc -o $@ $<  build/bloomfilter.o -DK=2
-
-testVirusRequest: testbuild/testVirusRequest.o build/requests.o build/virusRequest.o
-	gcc -o $@ $^
-
-run:
-	./travelMonitor -m 3 -b 5 -s 100000 -i test_dir
-
-run_debug:
-	valgrind --trace-children=yes ./travelMonitor -m 3 -b 5 -s 100000 -i test_dir
-
-run_check_leaks:
-	valgrind --trace-children=yes --leak-check=full ./travelMonitor -m 2 -b 5 -s 100000 -i unbalanced_load
-
-clean_all: clean_pipes clean_log clean_tests clean
+clean_all: clean_log clean
 
 clean_log:
 	rm -f log_file.*
 
-clean_tests:
-	rm -f $(TESTEXECS) testbuild/*
-
-clean_pipes:
-	rm /tmp/*r
-	rm /tmp/*w
-
 clean:
-	rm -f travelMonitor monitorProcess build/*
+	rm -f travelMonitor Monitor build/*

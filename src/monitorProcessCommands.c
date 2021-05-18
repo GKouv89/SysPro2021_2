@@ -65,10 +65,10 @@ void checkVacc(hashMap *citizen_map, hashMap *virus_map, char *citizenID, int re
   free(pipeWriteBuffer);
 }
 
-void prematureExit(int readfd, int writefd, char **countries, int countryIndex, requests *reqs){
-  close(writefd);
-	close(readfd);
+void printLogFile(char **countries, int countryIndex, requests *reqs){
   // Create log file of current process 
+  // if this child has been killed again 
+  // the file will get replaced
 	pid_t mypid = getpid();
   char *logFileName = malloc(20*sizeof(char));
   sprintf(logFileName, "log_file.%d", mypid);
@@ -80,5 +80,4 @@ void prematureExit(int readfd, int writefd, char **countries, int countryIndex, 
   fprintf(logfile, "ACCEPTED %d\n", reqs->accepted);
   fprintf(logfile, "REJECTED %d\n", reqs->rejected);
 	assert(fclose(logfile) == 0);
-	exit(0);
 }
